@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yellow Jack – Login</title>
+  <style>
+    :root {
+      --accent: #f5f5f5;
+      --accent-soft: #d4d4d4;
+      --accent-hot: #ffffff;
+      --bg-main: #050505;
+      --bg-card: #181818;
+      --text-main: #f5f5f5;
+      --text-muted: #a3a3a3;
+      --border-subtle: #262626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.03), transparent 55%),
+        #050505;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+
+    .logo-section {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo-section img {
+      width: 120px;
+      height: 120px;
+      margin-bottom: 20px;
+      filter: brightness(0.95);
+    }
+
+    .logo-section h1 {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--accent-hot);
+      margin-bottom: 8px;
+    }
+
+    .logo-section p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      letter-spacing: 1px;
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .login-card h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+      color: var(--accent);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent-soft);
+      background: #0a0a0a;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent-hot);
+      color: var(--bg-main);
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+
+    .login-btn:hover {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .error-message {
+      background: rgba(255, 100, 100, 0.1);
+      border: 1px solid rgba(255, 100, 100, 0.3);
+      color: #ff6464;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo-section">
+      <img src="Main Logo.png" alt="Yellow Jack Logo" />
+      <h1>Yellow Jack</h1>
+      <p>Bar Tracker System</p>
+    </div>
+
+    <div class="login-card">
+      <h2>Login</h2>
+
+      <div class="error-message" id="errorMessage"></div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" />
+        </div>
+
+        <button type="submit" class="login-btn">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../config.js"></script>
+  <script>
+    // Check if user is already logged in on page load
+    async function checkAuth() {
+      try {
+        const response = await fetch(`${API_URL}/auth/check`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.authenticated) {
+            // User is logged in, redirect to analytics
+            window.location.href = 'analytics.html';
+          }
+        }
+      } catch (error) {
+        console.log('Not authenticated');
+      }
+    }
+
+    // Run auth check on page load
+    checkAuth();
+
+    // Handle login form submission
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorMessage = document.getElementById('errorMessage');
+
+      // Hide previous errors
+      errorMessage.style.display = 'none';
+
+      try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Login successful, redirect to analytics
+          window.location.href = 'analytics.html';
+        } else {
+          // Show error message
+          errorMessage.textContent = data.message || 'Login failed. Please try again.';
+          errorMessage.style.display = 'block';
+        }
+      } catch (error) {
+        errorMessage.textContent = 'Connection error. Please check your internet connection.';
+        errorMessage.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
+

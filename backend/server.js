@@ -153,6 +153,18 @@ app.post('/auth/logout', (req, res) => {
   });
 });
 
+// Check if user is authenticated
+app.get('/auth/check', (req, res) => {
+  if (req.session && req.session.user) {
+    res.json({
+      authenticated: true,
+      user: req.session.user
+    });
+  } else {
+    res.json({ authenticated: false });
+  }
+});
+
 // Get current user
 app.get('/auth/user', requireAuth, (req, res) => {
   res.json({ user: req.session.user });
