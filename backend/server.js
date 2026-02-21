@@ -457,9 +457,15 @@ async function startServer() {
   try {
     await initializeDatabase();
 
-    app.listen(PORT, '0.0.0.0', () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Yellow Jack API server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌐 Server is listening on 0.0.0.0:${PORT}`);
+    });
+
+    server.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      process.exit(1);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
