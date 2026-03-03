@@ -783,7 +783,7 @@
 
     const token = localStorage.getItem('yj_token');
     const currentUser = JSON.parse(localStorage.getItem('yj_user') || 'null');
-    if (!token || !currentUser) { window.location.href = 'login.html'; }
+    if (!token || !currentUser) { window.location.href = 'index.html'; }
 
     const authHeaders = { 'Authorization': `Bearer ${token}` };
     document.getElementById('currentUser').textContent = `${currentUser?.full_name} · ${currentUser?.role}`;
