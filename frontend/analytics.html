@@ -455,29 +455,20 @@
   <script>
     const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    // Auth check - redirect to login if not authenticated
-    async function checkAuth() {
-      try {
-        const res = await fetch(`${API_URL}/auth/check`, { credentials: 'include' });
-        const data = await res.json();
-        if (!data.authenticated) {
-          window.location.href = 'index.html';
-          return null;
-        }
-        return data.user;
-      } catch {
-        window.location.href = 'index.html';
-        return null;
-      }
-    }
+    const token = localStorage.getItem('yj_token');
+    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
+    if (!token || !user) { window.location.href = 'login.html'; }
+
+    const authHeaders = { 'Authorization': `Bearer ${token}` };
+
+    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
 
     async function loadStats() {
       try {
-        const res = await fetch(`${API_URL}/api/sales?limit=1000`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/sales?limit=1000`, { headers: authHeaders });
         const data = await res.json();
         const sales = data.sales || [];
 
-        // Tonight's sales (today's date)
         const today = new Date().toISOString().split('T')[0];
         const tonight = sales
           .filter(s => s.created_at && s.created_at.startsWith(today))
@@ -490,14 +481,12 @@
         document.getElementById('stat-total-count').textContent = data.pagination?.total ?? sales.length;
         document.getElementById('stat-total-revenue').textContent = fmt(totalRevenue);
         document.getElementById('stat-total-earnt').textContent = fmt(totalEarnt);
-      } catch (e) {
-        console.error('Failed to load sales stats:', e);
-      }
+      } catch (e) { console.error('Failed to load sales stats:', e); }
     }
 
     async function loadLeaderboards() {
       try {
-        const res = await fetch(`${API_URL}/api/ledger`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/ledger`, { headers: authHeaders });
         const data = await res.json();
         const ledger = data.ledger || [];
 
@@ -519,19 +508,10 @@
 
         buildList('leaderboard-weekly', ledger);
         buildList('leaderboard-monthly', [...ledger].reverse());
-      } catch (e) {
-        console.error('Failed to load leaderboards:', e);
-      }
+      } catch (e) { console.error('Failed to load leaderboards:', e); }
     }
 
-    async function init() {
-      const user = await checkAuth();
-      if (!user) return;
-      document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
-      await Promise.all([loadStats(), loadLeaderboards()]);
-    }
-
-    init();
+    Promise.all([loadStats(), loadLeaderboards()]);
   </script>
 </body>
 </html>

@@ -781,40 +781,33 @@
   <script>
     const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    const token = localStorage.getItem('yj_token');
+    const currentUser = JSON.parse(localStorage.getItem('yj_user') || 'null');
+    if (!token || !currentUser) { window.location.href = 'login.html'; }
+
+    const authHeaders = { 'Authorization': `Bearer ${token}` };
+    document.getElementById('currentUser').textContent = `${currentUser?.full_name} · ${currentUser?.role}`;
+
     let currentPage = 1;
     let totalPages = 1;
-    let currentUser = null;
 
-    // Auth check
-    async function checkAuth() {
-      try {
-        const res = await fetch(`${API_URL}/auth/check`, { credentials: 'include' });
-        const data = await res.json();
-        if (!data.authenticated) { window.location.href = 'index.html'; return null; }
-        return data.user;
-      } catch { window.location.href = 'index.html'; return null; }
-    }
-
-    // Load roster into datalist
     async function loadRoster() {
       try {
-        const res = await fetch(`${API_URL}/api/roster`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/roster`, { headers: authHeaders });
         const data = await res.json();
         const dl = document.getElementById('sale-employee-list');
         dl.innerHTML = (data.roster || []).map(m => `<option value="${m.full_name}"></option>`).join('');
       } catch (e) { console.error('Failed to load roster:', e); }
     }
 
-    // Load sales table
     async function loadSales(page = 1) {
       try {
-        const res = await fetch(`${API_URL}/api/sales?page=${page}&limit=10`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/sales?page=${page}&limit=10`, { headers: authHeaders });
         const data = await res.json();
         const sales = data.sales || [];
         totalPages = data.pagination?.pages || 1;
         currentPage = page;
 
-        // Update stat cards
         const today = new Date().toISOString().split('T')[0];
         const tonight = sales.filter(s => s.created_at?.startsWith(today))
           .reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
@@ -847,10 +840,9 @@
       } catch (e) { console.error('Failed to load sales:', e); }
     }
 
-    // Load ledger
     async function loadLedger() {
       try {
-        const res = await fetch(`${API_URL}/api/ledger`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/ledger`, { headers: authHeaders });
         const data = await res.json();
         const ledger = data.ledger || [];
 
@@ -858,7 +850,7 @@
         document.getElementById('stat-revenue').textContent = fmt(totalRevenue / 0.1 * 0.9);
 
         const tbody = document.getElementById('ledgerTableBody');
-        const canPay = currentUser && ['Manager', 'Admin'].includes(currentUser.role);
+        const canPay = ['Manager', 'Admin'].includes(currentUser?.role);
         if (!ledger.length) {
           tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">No ledger entries yet</td></tr>';
         } else {
@@ -873,31 +865,26 @@
       } catch (e) { console.error('Failed to load ledger:', e); }
     }
 
-    // Pay staff member
     async function payStaff(name, amount) {
       if (!confirm(`Pay ${fmt(amount)} to ${name}?`)) return;
       try {
         const res = await fetch(`${API_URL}/api/ledger/pay`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
           body: JSON.stringify({ employee_name: name, amount })
         });
         if (res.ok) { loadLedger(); } else { alert('Payment failed.'); }
       } catch { alert('Connection error.'); }
     }
 
-    // Handle new sale form
     document.getElementById('saleForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('saveBtn');
-      btn.disabled = true;
-      btn.textContent = 'Saving...';
+      btn.disabled = true; btn.textContent = 'Saving...';
       try {
         const res = await fetch(`${API_URL}/api/sales`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          headers: { ...authHeaders, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             employee_name: document.getElementById('sale-employee').value,
             description: document.getElementById('sale-description').value,
@@ -912,21 +899,13 @@
           alert(err.error || 'Failed to save sale.');
         }
       } catch { alert('Connection error.'); }
-      btn.disabled = false;
-      btn.textContent = 'Save Sale';
+      btn.disabled = false; btn.textContent = 'Save Sale';
     });
 
     document.getElementById('prevBtn').addEventListener('click', () => loadSales(currentPage - 1));
     document.getElementById('nextBtn').addEventListener('click', () => loadSales(currentPage + 1));
 
-    async function init() {
-      currentUser = await checkAuth();
-      if (!currentUser) return;
-      document.getElementById('currentUser').textContent = `${currentUser.full_name} · ${currentUser.role}`;
-      await Promise.all([loadRoster(), loadSales(1), loadLedger()]);
-    }
-
-    init();
+    Promise.all([loadRoster(), loadSales(1), loadLedger()]);
   </script>
 </body>
 </html>

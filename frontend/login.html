@@ -189,28 +189,11 @@
 
   <script src="config.js"></script>
   <script>
-    // Check if user is already logged in on page load
-    async function checkAuth() {
-      try {
-        const response = await fetch(`${API_URL}/auth/check`, {
-          method: 'GET',
-          credentials: 'include'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.authenticated) {
-            // User is logged in, redirect to analytics
-            window.location.href = 'analytics.html';
-          }
-        }
-      } catch (error) {
-        console.log('Not authenticated');
-      }
+    // If already logged in, skip to dashboard
+    const existingToken = localStorage.getItem('yj_token');
+    if (existingToken) {
+      window.location.href = 'dashboard.html';
     }
-
-    // Run auth check on page load
-    checkAuth();
 
     // Handle login form submission
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -220,31 +203,28 @@
       const password = document.getElementById('password').value;
       const errorMessage = document.getElementById('errorMessage');
 
-      // Hide previous errors
       errorMessage.style.display = 'none';
 
       try {
         const response = await fetch(`${API_URL}/auth/login`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
 
         const data = await response.json();
 
         if (response.ok) {
-          // Login successful, redirect to analytics
-          window.location.href = 'analytics.html';
+          // Store token and user in localStorage
+          localStorage.setItem('yj_token', data.token);
+          localStorage.setItem('yj_user', JSON.stringify(data.user));
+          window.location.href = 'dashboard.html';
         } else {
-          // Show error message
-          errorMessage.textContent = data.message || 'Login failed. Please try again.';
+          errorMessage.textContent = data.error || 'Login failed. Please try again.';
           errorMessage.style.display = 'block';
         }
       } catch (error) {
-        errorMessage.textContent = 'Connection error. Please check your internet connection.';
+        errorMessage.textContent = 'Connection error. Please try again.';
         errorMessage.style.display = 'block';
       }
     });

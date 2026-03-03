@@ -1,9 +1,11 @@
 const express = require('express');
-const session = require('express-session');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
 require('dotenv').config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'yellow-jack-jwt-secret-key';
 
 const { pool, initializeDatabase } = require('./database');
 
@@ -32,36 +34,35 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'yellow-jack-secret-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: true,
-    httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Authentication middleware
+// JWT Authentication middleware
 function requireAuth(req, res, next) {
-  if (!req.session.user) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  next();
+  try {
+    req.user = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
 }
 
 function requireRole(roles) {
   return (req, res, next) => {
-    if (!req.session.user) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    if (!roles.includes(req.session.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
+    try {
+      req.user = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      if (!roles.includes(req.user.role)) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+      next();
+    } catch {
+      return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    next();
   };
 }
 
@@ -126,17 +127,20 @@ app.post('/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    // Create session
-    req.session.user = {
+    // Sign JWT token
+    const payload = {
       id: user.id,
       username: user.username,
       full_name: user.full_name,
       role: user.role
     };
 
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+
     res.json({
       message: 'Login successful',
-      user: req.session.user
+      token,
+      user: payload
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -144,31 +148,28 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
-// Logout
+// Logout (client just discards the token)
 app.post('/auth/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Logout failed' });
-    }
-    res.json({ message: 'Logout successful' });
-  });
+  res.json({ message: 'Logout successful' });
 });
 
-// Check if user is authenticated
+// Check if token is valid
 app.get('/auth/check', (req, res) => {
-  if (req.session && req.session.user) {
-    res.json({
-      authenticated: true,
-      user: req.session.user
-    });
-  } else {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.json({ authenticated: false });
+  }
+  try {
+    const user = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+    res.json({ authenticated: true, user });
+  } catch {
     res.json({ authenticated: false });
   }
 });
 
 // Get current user
 app.get('/auth/user', requireAuth, (req, res) => {
-  res.json({ user: req.session.user });
+  res.json({ user: req.user });
 });
 
 // Health check
@@ -302,7 +303,7 @@ app.get('/api/ledger', requireAuth, async (req, res) => {
 app.post('/api/ledger/pay', requireRole(['Manager', 'Admin']), async (req, res) => {
   try {
     const { employee_name, amount } = req.body;
-    const paid_by = req.session.user.username;
+    const paid_by = req.user.username;
 
     // Record payment
     await pool.query(
@@ -429,7 +430,7 @@ app.get('/api/blacklist', requireAuth, async (req, res) => {
 app.post('/api/blacklist', requireRole(['Manager', 'Admin']), async (req, res) => {
   try {
     const { name, reason } = req.body;
-    const added_by = req.session.user.username;
+    const added_by = req.user.username;
 
     const result = await pool.query(
       'INSERT INTO blacklist (name, reason, added_by) VALUES ($1, $2, $3) RETURNING *',
