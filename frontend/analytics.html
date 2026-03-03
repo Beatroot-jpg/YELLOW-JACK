@@ -372,24 +372,24 @@
           <h2>Analytics</h2>
           <span>High-level overview of Yellow Jack performance</span>
         </div>
-        <span>Frontend only · WIP</span>
+        <span id="currentUser">Loading...</span>
       </header>
 
       <section class="cards">
         <div class="card">
           <h3>Tonight's Sales</h3>
-          <div class="value">$0</div>
-          <div class="note">Placeholder – will be driven by Sales data later</div>
+          <div class="value" id="stat-tonight">—</div>
+          <div class="note">Running total for today</div>
         </div>
         <div class="card">
-          <h3>Open Tabs</h3>
-          <div class="value">0</div>
-          <div class="note">Number of active customers / tables</div>
+          <h3>Total Sales</h3>
+          <div class="value" id="stat-total-count">—</div>
+          <div class="note">All recorded sales entries</div>
         </div>
         <div class="card">
-          <h3>Staff On Shift</h3>
-          <div class="value">0</div>
-          <div class="note">Linked to Roster once backend is wired</div>
+          <h3>Active Staff</h3>
+          <div class="value" id="stat-staff">—</div>
+          <div class="note">Staff with earnings on the ledger</div>
         </div>
       </section>
 
@@ -419,46 +419,18 @@
             <h3 class="panel-title">Weekly Sales Leaderboard</h3>
             <span class="panel-subtitle">Top sellers this week – placeholder data</span>
           </div>
-          <ul class="leaderboard-list">
-            <li class="leaderboard-item">
-              <span class="leaderboard-rank">#1</span>
-              <span class="leaderboard-name">Placeholder Staff</span>
-              <span class="leaderboard-value">$0</span>
-            </li>
-            <li class="leaderboard-item">
-              <span class="leaderboard-rank">#2</span>
-              <span class="leaderboard-name">Placeholder Staff</span>
-              <span class="leaderboard-value">$0</span>
-            </li>
-            <li class="leaderboard-item">
-              <span class="leaderboard-rank">#3</span>
-              <span class="leaderboard-name">Placeholder Staff</span>
-              <span class="leaderboard-value">$0</span>
-            </li>
+          <ul class="leaderboard-list" id="leaderboard-weekly">
+            <li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">Loading...</span></li>
           </ul>
         </div>
 
         <div class="panel">
           <div class="panel-header">
             <h3 class="panel-title">Monthly Sales Leaderboard</h3>
-            <span class="panel-subtitle">Top sellers this month – placeholder data</span>
+            <span class="panel-subtitle">Top earners all time</span>
           </div>
-          <ul class="leaderboard-list">
-            <li class="leaderboard-item">
-              <span class="leaderboard-rank">#1</span>
-              <span class="leaderboard-name">Placeholder Staff</span>
-              <span class="leaderboard-value">$0</span>
-            </li>
-            <li class="leaderboard-item">
-              <span class="leaderboard-rank">#2</span>
-              <span class="leaderboard-name">Placeholder Staff</span>
-              <span class="leaderboard-value">$0</span>
-            </li>
-            <li class="leaderboard-item">
-              <span class="leaderboard-rank">#3</span>
-              <span class="leaderboard-name">Placeholder Staff</span>
-              <span class="leaderboard-value">$0</span>
-            </li>
+          <ul class="leaderboard-list" id="leaderboard-monthly">
+            <li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">Loading...</span></li>
           </ul>
         </div>
       </section>
@@ -466,18 +438,101 @@
       <!-- Totals row: monthly and weekly total revenue trackers -->
       <section class="analytics-row analytics-row--totals">
         <div class="card totals-grid-card">
-          <h3>Monthly Total Revenue</h3>
-          <div class="value">$0</div>
-          <div class="note">Placeholder – will pull from monthly Sales data</div>
+          <h3>Total Revenue (All Time)</h3>
+          <div class="value" id="stat-total-revenue">—</div>
+          <div class="note">Cumulative business revenue (90% of all sales)</div>
         </div>
         <div class="card totals-grid-card">
-          <h3>Weekly Total Revenue</h3>
-          <div class="value">$0</div>
-          <div class="note">Placeholder – will pull from weekly Sales data</div>
+          <h3>Total Staff Earnings</h3>
+          <div class="value" id="stat-total-earnt">—</div>
+          <div class="note">Cumulative 10% commissions earned by all staff</div>
         </div>
       </section>
     </main>
   </div>
+
+  <script src="config.js"></script>
+  <script>
+    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Auth check - redirect to login if not authenticated
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${API_URL}/auth/check`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.authenticated) {
+          window.location.href = 'index.html';
+          return null;
+        }
+        return data.user;
+      } catch {
+        window.location.href = 'index.html';
+        return null;
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_URL}/api/sales?limit=1000`, { credentials: 'include' });
+        const data = await res.json();
+        const sales = data.sales || [];
+
+        // Tonight's sales (today's date)
+        const today = new Date().toISOString().split('T')[0];
+        const tonight = sales
+          .filter(s => s.created_at && s.created_at.startsWith(today))
+          .reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
+
+        const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.business_made || 0), 0);
+        const totalEarnt = sales.reduce((sum, s) => sum + parseFloat(s.money_earnt || 0), 0);
+
+        document.getElementById('stat-tonight').textContent = fmt(tonight);
+        document.getElementById('stat-total-count').textContent = data.pagination?.total ?? sales.length;
+        document.getElementById('stat-total-revenue').textContent = fmt(totalRevenue);
+        document.getElementById('stat-total-earnt').textContent = fmt(totalEarnt);
+      } catch (e) {
+        console.error('Failed to load sales stats:', e);
+      }
+    }
+
+    async function loadLeaderboards() {
+      try {
+        const res = await fetch(`${API_URL}/api/ledger`, { credentials: 'include' });
+        const data = await res.json();
+        const ledger = data.ledger || [];
+
+        document.getElementById('stat-staff').textContent = ledger.length;
+
+        const buildList = (id, entries) => {
+          const ul = document.getElementById(id);
+          if (!entries.length) {
+            ul.innerHTML = '<li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">No data yet</span></li>';
+            return;
+          }
+          ul.innerHTML = entries.slice(0, 5).map((e, i) => `
+            <li class="leaderboard-item">
+              <span class="leaderboard-rank">#${i + 1}</span>
+              <span class="leaderboard-name">${e.employee_name}</span>
+              <span class="leaderboard-value">${fmt(e.total_money_earnt)} · ${e.deals_count} deals</span>
+            </li>`).join('');
+        };
+
+        buildList('leaderboard-weekly', ledger);
+        buildList('leaderboard-monthly', [...ledger].reverse());
+      } catch (e) {
+        console.error('Failed to load leaderboards:', e);
+      }
+    }
+
+    async function init() {
+      const user = await checkAuth();
+      if (!user) return;
+      document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
+      await Promise.all([loadStats(), loadLeaderboards()]);
+    }
+
+    init();
+  </script>
 </body>
 </html>
 

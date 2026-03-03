@@ -646,24 +646,24 @@
           <h2>Sales</h2>
           <span>Record and review Yellow Jack bar sales</span>
         </div>
-        <span>Frontend only · WIP</span>
+        <span id="currentUser">Loading...</span>
       </header>
 
       <section class="cards">
         <div class="card">
           <h3>Tonight's Sales</h3>
-          <div class="value">$0</div>
-          <div class="note">Placeholder – running total for the current night</div>
+          <div class="value" id="stat-tonight">—</div>
+          <div class="note">Running total for today</div>
         </div>
         <div class="card">
-          <h3>Open Tabs</h3>
-          <div class="value">0</div>
-          <div class="note">Placeholder – customers with open bills</div>
+          <h3>Total Sales</h3>
+          <div class="value" id="stat-count">—</div>
+          <div class="note">All recorded sales entries</div>
         </div>
         <div class="card">
-          <h3>Unfinalised Sales</h3>
-          <div class="value">0</div>
-          <div class="note">Placeholder – entries to be checked out</div>
+          <h3>Total Revenue</h3>
+          <div class="value" id="stat-revenue">—</div>
+          <div class="note">Business share (90%) of all sales</div>
         </div>
       </section>
 
@@ -673,42 +673,43 @@
             <h3 class="panel-title">Log New Sale</h3>
             <span class="panel-subtitle">Capture who sold what and for how much</span>
           </div>
-          <form class="sale-form">
+          <form class="sale-form" id="saleForm">
             <div class="form-field form-field--select">
               <label class="form-label" for="sale-employee">Name</label>
               <input
                 id="sale-employee"
-	                class="form-input"
+                class="form-input"
                 list="sale-employee-list"
-                placeholder="Type or choose staff (roster later)"
+                placeholder="Type or choose staff member"
+                required
               />
-              <datalist id="sale-employee-list">
-                <option value="Bob"></option>
-                <option value="Ash"></option>
-                <option value="Jess"></option>
-              </datalist>
+              <datalist id="sale-employee-list"></datalist>
             </div>
-	            <div class="form-field form-field--wide">
+            <div class="form-field form-field--wide">
               <label class="form-label" for="sale-description">Description</label>
               <input
                 id="sale-description"
                 type="text"
                 class="form-input"
                 placeholder="What was sold / table / notes"
+                required
               />
             </div>
             <div class="form-field">
-              <label class="form-label" for="sale-amount">Total Amount</label>
+              <label class="form-label" for="sale-amount">Total Amount ($)</label>
               <input
                 id="sale-amount"
-                type="text"
+                type="number"
+                min="0"
+                step="0.01"
                 class="form-input"
-                placeholder="$0 – full sale value of the sale"
+                placeholder="0.00"
+                required
               />
             </div>
           </form>
           <div class="form-actions">
-            <button type="button" class="button-primary">Save sale (placeholder)</button>
+            <button type="submit" form="saleForm" class="button-primary" id="saveBtn">Save Sale</button>
           </div>
           <p class="panel-subtitle panel-note">
             Each sale gives the worker a 10% cut and 90% goes to the business. This logic will be wired in later.
@@ -718,10 +719,10 @@
         <div class="panel">
           <div class="panel-header">
             <h3 class="panel-title">Sales History</h3>
-	            <span class="panel-subtitle">Paginated table – 10 entries per page (placeholder)</span>
+            <span class="panel-subtitle">10 entries per page</span>
           </div>
-		          <div class="table-wrapper">
-		            <table class="data-table data-table--ledger">
+          <div class="table-wrapper">
+            <table class="data-table data-table--ledger">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -729,189 +730,203 @@
                   <th>Total</th>
                   <th>Date</th>
                   <th>Time</th>
-	                  <th>Money Earnt</th>
+                  <th>Money Earnt</th>
                   <th>Business Made</th>
                 </tr>
               </thead>
-	              <tbody>
-	                <tr>
-	                  <td>Bob</td>
-	                  <td>VIP booth &amp; bottle service</td>
-	                  <td class="amount">$200,000</td>
-	                  <td class="small">2026-02-14</td>
-	                  <td class="small">23:41</td>
-	                  <td class="amount">$20,000</td>
-	                  <td class="amount">$180,000</td>
-	                </tr>
-	                <tr>
-	                  <td>Ash</td>
-	                  <td>Bar tab – regulars</td>
-	                  <td class="amount">$75,000</td>
-	                  <td class="small">2026-02-14</td>
-	                  <td class="small">23:15</td>
-	                  <td class="amount">$7,500</td>
-	                  <td class="amount">$67,500</td>
-	                </tr>
-	                <tr>
-	                  <td>Mike</td>
-	                  <td>Corporate tab – LS Motors</td>
-	                  <td class="amount">$95,000</td>
-	                  <td class="small">2026-02-14</td>
-	                  <td class="small">22:50</td>
-	                  <td class="amount">$9,500</td>
-	                  <td class="amount">$85,500</td>
-	                </tr>
-	                <tr>
-	                  <td>Jess</td>
-	                  <td>Cocktail set – hens night</td>
-	                  <td class="amount">$55,000</td>
-	                  <td class="small">2026-02-14</td>
-	                  <td class="small">22:12</td>
-	                  <td class="amount">$5,500</td>
-	                  <td class="amount">$49,500</td>
-	                </tr>
-	                <tr>
-	                  <td>Zara</td>
-	                  <td>Duo set drink specials</td>
-	                  <td class="amount">$30,000</td>
-	                  <td class="small">2026-02-14</td>
-	                  <td class="small">21:40</td>
-	                  <td class="amount">$3,000</td>
-	                  <td class="amount">$27,000</td>
-	                </tr>
-	                <tr>
-	                  <td>Bob</td>
-	                  <td>Late-night whiskey flights</td>
-	                  <td class="amount">$60,000</td>
-	                  <td class="small">2026-02-13</td>
-	                  <td class="small">23:05</td>
-	                  <td class="amount">$6,000</td>
-	                  <td class="amount">$54,000</td>
-	                </tr>
-	                <tr>
-	                  <td>Ash</td>
-	                  <td>Function room hire</td>
-	                  <td class="amount">$120,000</td>
-	                  <td class="small">2026-02-13</td>
-	                  <td class="small">22:30</td>
-	                  <td class="amount">$12,000</td>
-	                  <td class="amount">$108,000</td>
-	                </tr>
-	                <tr>
-	                  <td>Mike</td>
-	                  <td>Post-closing lock-in</td>
-	                  <td class="amount">$25,000</td>
-	                  <td class="small">2026-02-13</td>
-	                  <td class="small">22:00</td>
-	                  <td class="amount">$2,500</td>
-	                  <td class="amount">$22,500</td>
-	                </tr>
-	                <tr>
-	                  <td>Jess</td>
-	                  <td>Happy hour crowd</td>
-	                  <td class="amount">$40,000</td>
-	                  <td class="small">2026-02-13</td>
-	                  <td class="small">21:32</td>
-	                  <td class="amount">$4,000</td>
-	                  <td class="amount">$36,000</td>
-	                </tr>
-	                <tr>
-	                  <td>Zara</td>
-	                  <td>Afternoon beers</td>
-	                  <td class="amount">$18,000</td>
-	                  <td class="small">2026-02-13</td>
-	                  <td class="small">17:10</td>
-	                  <td class="amount">$1,800</td>
-	                  <td class="amount">$16,200</td>
-	                </tr>
-	              </tbody>
+              <tbody id="salesTableBody">
+                <tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+              </tbody>
             </table>
           </div>
-	          <div class="pagination">
-	            <button type="button" class="page-button" disabled>Prev</button>
-	            <span class="page-status">Page 1</span>
-	            <button type="button" class="page-button" disabled>Next</button>
-	          </div>
+          <div class="pagination">
+            <button type="button" class="page-button" id="prevBtn">Prev</button>
+            <span class="page-status" id="pageStatus">Page 1</span>
+            <button type="button" class="page-button" id="nextBtn">Next</button>
+          </div>
           <div class="table-meta">
-	            <span>Showing 1–10 of 10 · 10 per page (pagination to be wired to API later)</span>
-	            <span>Sample data only – real sales & ledger updates will stream in from the backend</span>
+            <span id="tableMeta">Loading sales...</span>
           </div>
         </div>
 
-	        <div class="panel">
-	          <div class="panel-header">
-	            <h3 class="panel-title">Ledger – Money Owed to Staff</h3>
-	            <span class="panel-subtitle">
-	              Compounded 10% cut from all logged sales (placeholder)
-	            </span>
-	          </div>
-	          <div class="table-wrapper">
-		            <table class="data-table data-table--ledger">
-	              <thead>
-	                <tr>
-	                  <th>Name</th>
-	                  <th>Deals</th>
-	                  <th>Total Money Earnt</th>
-		                  <th>Notes</th>
-		                  <th>Pay</th>
-	                </tr>
-	              </thead>
-	              <tbody>
-	                <tr>
-	                  <td>Bob</td>
-	                  <td class="small">2 deals</td>
-	                  <td class="amount">$26,000</td>
-		                  <td class="small">Example balance from Sales History above</td>
-		                  <td>
-		                    <button type="button" class="button-secondary">Pay $26,000</button>
-		                  </td>
-	                </tr>
-	                <tr>
-	                  <td>Ash</td>
-	                  <td class="small">2 deals</td>
-	                  <td class="amount">$19,500</td>
-		                  <td class="small">Compounded over bar tabs & function hires</td>
-		                  <td>
-		                    <button type="button" class="button-secondary">Pay $19,500</button>
-		                  </td>
-	                </tr>
-	                <tr>
-	                  <td>Jess</td>
-	                  <td class="small">2 deals</td>
-	                  <td class="amount">$9,500</td>
-		                  <td class="small">Cocktail sets & happy hour sales</td>
-		                  <td>
-		                    <button type="button" class="button-secondary">Pay $9,500</button>
-		                  </td>
-	                </tr>
-	                <tr>
-	                  <td>Mike</td>
-	                  <td class="small">2 deals</td>
-	                  <td class="amount">$12,000</td>
-		                  <td class="small">Corporate tabs & late-night lock-ins</td>
-		                  <td>
-		                    <button type="button" class="button-secondary">Pay $12,000</button>
-		                  </td>
-	                </tr>
-	                <tr>
-	                  <td>Zara</td>
-	                  <td class="small">2 deals</td>
-	                  <td class="amount">$4,800</td>
-		                  <td class="small">Afternoon pours & duo set specials</td>
-		                  <td>
-		                    <button type="button" class="button-secondary">Pay $4,800</button>
-		                  </td>
-	                </tr>
-	              </tbody>
-	            </table>
-	          </div>
-	          <div class="table-meta">
-	            <span>Ledger totals are 10% of each sale, accumulated per staff member.</span>
-	            <span>In production this will be driven by a /api/ledger endpoint backed by sales data.</span>
-	          </div>
-	        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">Ledger – Money Owed to Staff</h3>
+            <span class="panel-subtitle">10% cut from all logged sales</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table data-table--ledger">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Deals</th>
+                  <th>Total Money Earnt</th>
+                  <th>Pay</th>
+                </tr>
+              </thead>
+              <tbody id="ledgerTableBody">
+                <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-meta">
+            <span>10% of each sale accumulated per staff member. Managers/Admins can pay out.</span>
+          </div>
+        </div>
       </section>
     </main>
   </div>
+
+  <script src="config.js"></script>
+  <script>
+    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let currentPage = 1;
+    let totalPages = 1;
+    let currentUser = null;
+
+    // Auth check
+    async function checkAuth() {
+      try {
+        const res = await fetch(`${API_URL}/auth/check`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.authenticated) { window.location.href = 'index.html'; return null; }
+        return data.user;
+      } catch { window.location.href = 'index.html'; return null; }
+    }
+
+    // Load roster into datalist
+    async function loadRoster() {
+      try {
+        const res = await fetch(`${API_URL}/api/roster`, { credentials: 'include' });
+        const data = await res.json();
+        const dl = document.getElementById('sale-employee-list');
+        dl.innerHTML = (data.roster || []).map(m => `<option value="${m.full_name}"></option>`).join('');
+      } catch (e) { console.error('Failed to load roster:', e); }
+    }
+
+    // Load sales table
+    async function loadSales(page = 1) {
+      try {
+        const res = await fetch(`${API_URL}/api/sales?page=${page}&limit=10`, { credentials: 'include' });
+        const data = await res.json();
+        const sales = data.sales || [];
+        totalPages = data.pagination?.pages || 1;
+        currentPage = page;
+
+        // Update stat cards
+        const today = new Date().toISOString().split('T')[0];
+        const tonight = sales.filter(s => s.created_at?.startsWith(today))
+          .reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
+        document.getElementById('stat-tonight').textContent = fmt(tonight);
+        document.getElementById('stat-count').textContent = data.pagination?.total ?? sales.length;
+
+        const tbody = document.getElementById('salesTableBody');
+        if (!sales.length) {
+          tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:20px">No sales yet</td></tr>';
+        } else {
+          tbody.innerHTML = sales.map(s => {
+            const dt = new Date(s.created_at);
+            return `<tr>
+              <td>${s.employee_name}</td>
+              <td>${s.description || '—'}</td>
+              <td class="amount">${fmt(s.total_amount)}</td>
+              <td class="small">${dt.toLocaleDateString()}</td>
+              <td class="small">${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</td>
+              <td class="amount">${fmt(s.money_earnt)}</td>
+              <td class="amount">${fmt(s.business_made)}</td>
+            </tr>`;
+          }).join('');
+        }
+
+        document.getElementById('pageStatus').textContent = `Page ${currentPage} of ${totalPages}`;
+        document.getElementById('prevBtn').disabled = currentPage <= 1;
+        document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+        document.getElementById('tableMeta').textContent =
+          `Showing page ${currentPage} of ${totalPages} · ${data.pagination?.total ?? 0} total sales`;
+      } catch (e) { console.error('Failed to load sales:', e); }
+    }
+
+    // Load ledger
+    async function loadLedger() {
+      try {
+        const res = await fetch(`${API_URL}/api/ledger`, { credentials: 'include' });
+        const data = await res.json();
+        const ledger = data.ledger || [];
+
+        const totalRevenue = ledger.reduce((sum, e) => sum + parseFloat(e.total_money_earnt || 0), 0);
+        document.getElementById('stat-revenue').textContent = fmt(totalRevenue / 0.1 * 0.9);
+
+        const tbody = document.getElementById('ledgerTableBody');
+        const canPay = currentUser && ['Manager', 'Admin'].includes(currentUser.role);
+        if (!ledger.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">No ledger entries yet</td></tr>';
+        } else {
+          tbody.innerHTML = ledger.map(e => `
+            <tr>
+              <td>${e.employee_name}</td>
+              <td class="small">${e.deals_count} deals</td>
+              <td class="amount">${fmt(e.total_money_earnt)}</td>
+              <td>${canPay ? `<button class="button-secondary" onclick="payStaff('${e.employee_name}', ${e.total_money_earnt})">Pay ${fmt(e.total_money_earnt)}</button>` : '—'}</td>
+            </tr>`).join('');
+        }
+      } catch (e) { console.error('Failed to load ledger:', e); }
+    }
+
+    // Pay staff member
+    async function payStaff(name, amount) {
+      if (!confirm(`Pay ${fmt(amount)} to ${name}?`)) return;
+      try {
+        const res = await fetch(`${API_URL}/api/ledger/pay`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ employee_name: name, amount })
+        });
+        if (res.ok) { loadLedger(); } else { alert('Payment failed.'); }
+      } catch { alert('Connection error.'); }
+    }
+
+    // Handle new sale form
+    document.getElementById('saleForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const res = await fetch(`${API_URL}/api/sales`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            employee_name: document.getElementById('sale-employee').value,
+            description: document.getElementById('sale-description').value,
+            total_amount: parseFloat(document.getElementById('sale-amount').value)
+          })
+        });
+        if (res.ok) {
+          e.target.reset();
+          await Promise.all([loadSales(1), loadLedger()]);
+        } else {
+          const err = await res.json();
+          alert(err.error || 'Failed to save sale.');
+        }
+      } catch { alert('Connection error.'); }
+      btn.disabled = false;
+      btn.textContent = 'Save Sale';
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', () => loadSales(currentPage - 1));
+    document.getElementById('nextBtn').addEventListener('click', () => loadSales(currentPage + 1));
+
+    async function init() {
+      currentUser = await checkAuth();
+      if (!currentUser) return;
+      document.getElementById('currentUser').textContent = `${currentUser.full_name} · ${currentUser.role}`;
+      await Promise.all([loadRoster(), loadSales(1), loadLedger()]);
+    }
+
+    init();
+  </script>
 </body>
 </html>
