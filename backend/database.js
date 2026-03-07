@@ -105,6 +105,20 @@ async function initializeDatabase() {
       )
     `);
 
+    // 7. Timesheets table - clock in/out tracking
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS timesheets (
+        id SERIAL PRIMARY KEY,
+        employee_name VARCHAR(255) NOT NULL,
+        clock_in TIMESTAMP WITH TIME ZONE NOT NULL,
+        clock_out TIMESTAMP WITH TIME ZONE,
+        duration_minutes INTEGER,
+        week_start DATE,
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('✅ Database schema initialized successfully');
     
   } catch (error) {

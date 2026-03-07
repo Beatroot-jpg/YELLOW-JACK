@@ -562,6 +562,167 @@ app.get('/api/payments', requireAuth, async (req, res) => {
 });
 
 // ============================================
+// TIMESHEET ENDPOINTS
+// ============================================
+
+// Get all currently clocked-in employees (no clock_out yet)
+app.get('/api/timesheets/active', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM timesheets WHERE clock_out IS NULL ORDER BY clock_in ASC`
+    );
+    res.json({ active: result.rows });
+  } catch (error) {
+    console.error('Error fetching active sessions:', error);
+    res.status(500).json({ error: 'Failed to fetch active sessions' });
+  }
+});
+
+// Get weekly summary - total hours per employee per week
+app.get('/api/timesheets/weekly', requireAuth, async (req, res) => {
+  try {
+    const { week_start } = req.query;
+
+    // Default to current week if not specified
+    const weekFilter = week_start
+      ? `DATE(week_start) = $1`
+      : `week_start >= date_trunc('week', CURRENT_DATE)`;
+    const params = week_start ? [week_start] : [];
+
+    const [summary, weeks] = await Promise.all([
+      pool.query(
+        `SELECT
+          employee_name,
+          week_start,
+          COUNT(*) AS shifts,
+          SUM(duration_minutes) AS total_minutes,
+          ROUND(SUM(duration_minutes) / 60.0, 2) AS total_hours
+         FROM timesheets
+         WHERE clock_out IS NOT NULL AND ${weekFilter}
+         GROUP BY employee_name, week_start
+         ORDER BY week_start DESC, total_minutes DESC`,
+        params
+      ),
+      // Get list of available weeks for the picker
+      pool.query(
+        `SELECT DISTINCT week_start FROM timesheets
+         WHERE clock_out IS NOT NULL AND week_start IS NOT NULL
+         ORDER BY week_start DESC LIMIT 12`
+      )
+    ]);
+
+    res.json({ summary: summary.rows, available_weeks: weeks.rows });
+  } catch (error) {
+    console.error('Error fetching weekly summary:', error);
+    res.status(500).json({ error: 'Failed to fetch weekly summary' });
+  }
+});
+
+// Get all timesheet entries (paginated)
+app.get('/api/timesheets', requireAuth, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+    const { employee } = req.query;
+
+    const params = [];
+    const where = employee
+      ? `WHERE employee_name ILIKE $${params.push(`%${employee}%`)}`
+      : '';
+
+    const [rows, count] = await Promise.all([
+      pool.query(
+        `SELECT * FROM timesheets ${where} ORDER BY clock_in DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM timesheets ${where}`, params)
+    ]);
+
+    res.json({
+      timesheets: rows.rows,
+      pagination: { page, limit, total: parseInt(count.rows[0].count), pages: Math.ceil(count.rows[0].count / limit) }
+    });
+  } catch (error) {
+    console.error('Error fetching timesheets:', error);
+    res.status(500).json({ error: 'Failed to fetch timesheets' });
+  }
+});
+
+// Clock In
+app.post('/api/timesheets/clock-in', requireAuth, async (req, res) => {
+  try {
+    const { employee_name } = req.body;
+    if (!employee_name) return res.status(400).json({ error: 'Employee name is required' });
+
+    // Check if already clocked in
+    const existing = await pool.query(
+      `SELECT id FROM timesheets WHERE employee_name ILIKE $1 AND clock_out IS NULL`,
+      [employee_name]
+    );
+    if (existing.rows.length) {
+      return res.status(400).json({ error: `${employee_name} is already clocked in` });
+    }
+
+    // Calculate week start (Monday)
+    const weekStart = await pool.query(
+      `SELECT date_trunc('week', CURRENT_DATE)::DATE AS week_start`
+    );
+
+    const result = await pool.query(
+      `INSERT INTO timesheets (employee_name, clock_in, week_start)
+       VALUES ($1, NOW(), $2) RETURNING *`,
+      [employee_name, weekStart.rows[0].week_start]
+    );
+
+    res.json({ message: `${employee_name} clocked in`, timesheet: result.rows[0] });
+  } catch (error) {
+    console.error('Error clocking in:', error);
+    res.status(500).json({ error: 'Failed to clock in' });
+  }
+});
+
+// Clock Out
+app.post('/api/timesheets/clock-out', requireAuth, async (req, res) => {
+  try {
+    const { employee_name, notes } = req.body;
+    if (!employee_name) return res.status(400).json({ error: 'Employee name is required' });
+
+    // Find the open entry
+    const open = await pool.query(
+      `SELECT * FROM timesheets WHERE employee_name ILIKE $1 AND clock_out IS NULL ORDER BY clock_in DESC LIMIT 1`,
+      [employee_name]
+    );
+    if (!open.rows.length) {
+      return res.status(400).json({ error: `${employee_name} is not clocked in` });
+    }
+
+    const entry = open.rows[0];
+    const result = await pool.query(
+      `UPDATE timesheets
+       SET clock_out = NOW(),
+           duration_minutes = ROUND(EXTRACT(EPOCH FROM (NOW() - clock_in)) / 60),
+           notes = $1
+       WHERE id = $2
+       RETURNING *`,
+      [notes || null, entry.id]
+    );
+
+    const ts = result.rows[0];
+    const hours = Math.floor(ts.duration_minutes / 60);
+    const mins = ts.duration_minutes % 60;
+
+    res.json({
+      message: `${employee_name} clocked out — ${hours}h ${mins}m`,
+      timesheet: ts
+    });
+  } catch (error) {
+    console.error('Error clocking out:', error);
+    res.status(500).json({ error: 'Failed to clock out' });
+  }
+});
+
+// ============================================
 // USER MANAGEMENT ENDPOINTS (Admin only)
 // ============================================
 

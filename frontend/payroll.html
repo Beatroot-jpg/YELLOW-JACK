@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yellow Jack – Payroll</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .week-picker { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+    .week-picker label { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); font-weight:600; }
+    .week-picker select { padding:8px 12px; background:var(--primary-60); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-main); font-size:0.9rem; cursor:pointer; }
+    .week-picker select:focus { outline:none; border-color:var(--accent-10); }
+    .hours-badge { font-size:1.1rem; font-weight:700; color:var(--accent-10); }
+    .shifts-badge { font-size:0.82rem; color:var(--text-muted); }
+    .summary-bar { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+    .summary-stat { background:var(--secondary-30); border:1px solid var(--border-subtle); border-radius:8px; padding:12px 18px; }
+    .summary-stat .label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); margin-bottom:4px; }
+    .summary-stat .val { font-size:1.3rem; font-weight:700; color:var(--accent-10); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="Main Logo.png" alt="Yellow Jack" />
+        <h1>Yellow Jack</h1>
+      </div>
+      <nav class="nav">
+        <a href="dashboard.html" class="nav-link">Dashboard</a>
+        <a href="analytics.html" class="nav-link">Analytics</a>
+        <a href="sales.html" class="nav-link">Sales</a>
+        <a href="payroll.html" class="nav-link active">Payroll</a>
+        <a href="roster.html" class="nav-link">Roster</a>
+        <a href="blacklist.html" class="nav-link">Blacklist</a>
+        <a href="admin.html" class="nav-link">Admin</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header>
+        <div>
+          <h2>Payroll</h2>
+          <span>Weekly hours and shift history</span>
+        </div>
+        <span id="currentUser">Loading...</span>
+      </header>
+
+      <!-- Summary stats -->
+      <div class="summary-bar" id="summaryBar">
+        <div class="summary-stat"><div class="label">Staff This Week</div><div class="val" id="stat-staff">—</div></div>
+        <div class="summary-stat"><div class="label">Total Hours</div><div class="val" id="stat-hours">—</div></div>
+        <div class="summary-stat"><div class="label">Total Shifts</div><div class="val" id="stat-shifts">—</div></div>
+      </div>
+
+      <!-- Weekly hours table -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Weekly Hours</h3>
+          <div class="week-picker">
+            <label for="weekPicker">Week</label>
+            <select id="weekPicker">
+              <option value="">Current Week</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Shifts</th>
+                <th>Total Hours</th>
+                <th>Total Minutes</th>
+                <th>Week Starting</th>
+              </tr>
+            </thead>
+            <tbody id="weeklyTableBody">
+              <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Shift log -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Shift Log</h3>
+          <span class="panel-subtitle">Full clock in/out history</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Clock In</th>
+                <th>Clock Out</th>
+                <th>Duration</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="shiftLogBody">
+              <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <button class="page-button" id="logPrevBtn">Prev</button>
+          <span class="page-status" id="logPageStatus">Page 1</span>
+          <button class="page-button" id="logNextBtn">Next</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const token = localStorage.getItem('yj_token');
+    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
+    if (!token || !user) { window.location.href = 'index.html'; }
+
+    const authHeaders = { 'Authorization': `Bearer ${token}` };
+    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
+
+    let logPage = 1;
+    let logTotalPages = 1;
+
+    function fmtDuration(mins) {
+      if (!mins && mins !== 0) return '—';
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${h}h ${m}m`;
+    }
+
+    function fmtDT(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadWeekly(weekStart = '') {
+      try {
+        const url = weekStart
+          ? `${API_URL}/api/timesheets/weekly?week_start=${weekStart}`
+          : `${API_URL}/api/timesheets/weekly`;
+        const res = await fetch(url, { headers: authHeaders });
+        const data = await res.json();
+        const summary = data.summary || [];
+        const weeks = data.available_weeks || [];
+
+        // Populate week picker
+        const picker = document.getElementById('weekPicker');
+        const currentVal = picker.value;
+        picker.innerHTML = '<option value="">Current Week</option>';
+        weeks.forEach(w => {
+          const opt = document.createElement('option');
+          opt.value = w.week_start;
+          opt.textContent = `Week of ${new Date(w.week_start).toLocaleDateString()}`;
+          picker.appendChild(opt);
+        });
+        if (currentVal) picker.value = currentVal;
+
+        // Update summary stats
+        const totalHours = summary.reduce((s, r) => s + parseFloat(r.total_hours || 0), 0);
+        const totalShifts = summary.reduce((s, r) => s + parseInt(r.shifts || 0), 0);
+        document.getElementById('stat-staff').textContent = summary.length;
+        document.getElementById('stat-hours').textContent = totalHours.toFixed(1) + 'h';
+        document.getElementById('stat-shifts').textContent = totalShifts;
+
+        // Populate table
+        const tbody = document.getElementById('weeklyTableBody');
+        if (!summary.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">No timesheet data for this week</td></tr>';
+          return;
+        }
+        tbody.innerHTML = summary.map(r => `
+          <tr>
+            <td style="font-weight:700">${r.employee_name}</td>
+            <td class="small">${r.shifts}</td>
+            <td class="hours-badge">${parseFloat(r.total_hours).toFixed(2)}h</td>
+            <td class="small">${r.total_minutes} min</td>
+            <td class="small">${r.week_start ? new Date(r.week_start).toLocaleDateString() : '—'}</td>
+          </tr>`).join('');
+      } catch (e) { console.error('Failed to load weekly summary:', e); }
+    }
+
+    async function loadShiftLog(page = 1) {
+      try {
+        const res = await fetch(`${API_URL}/api/timesheets?page=${page}&limit=15`, { headers: authHeaders });
+        const data = await res.json();
+        const shifts = data.timesheets || [];
+        logTotalPages = data.pagination?.pages || 1;
+        logPage = page;
+
+        const tbody = document.getElementById('shiftLogBody');
+        if (!shifts.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">No shift records yet</td></tr>';
+        } else {
+          tbody.innerHTML = shifts.map(s => {
+            const dur = s.duration_minutes !== null ? fmtDuration(s.duration_minutes) : '<span style="color:var(--accent-10);font-size:0.8rem">⏱ Active</span>';
+            return `<tr>
+              <td style="font-weight:700">${s.employee_name}</td>
+              <td class="small">${fmtDT(s.clock_in)}</td>
+              <td class="small">${s.clock_out ? fmtDT(s.clock_out) : '—'}</td>
+              <td>${dur}</td>
+              <td class="small">${s.notes || '—'}</td>
+            </tr>`;
+          }).join('');
+        }
+        document.getElementById('logPageStatus').textContent = `Page ${logPage} of ${logTotalPages}`;
+        document.getElementById('logPrevBtn').disabled = logPage <= 1;
+        document.getElementById('logNextBtn').disabled = logPage >= logTotalPages;
+      } catch (e) { console.error('Failed to load shift log:', e); }
+    }
+
+    document.getElementById('weekPicker').addEventListener('change', (e) => loadWeekly(e.target.value));
+    document.getElementById('logPrevBtn').addEventListener('click', () => loadShiftLog(logPage - 1));
+    document.getElementById('logNextBtn').addEventListener('click', () => loadShiftLog(logPage + 1));
+
+    Promise.all([loadWeekly(), loadShiftLog()]);
+  </script>
+</body>
+</html>
+
