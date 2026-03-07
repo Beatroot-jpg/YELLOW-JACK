@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yellow Jack – Roster</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .status-badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
+    .status-active { background:rgba(100,200,100,0.15); color:#6fcf97; border:1px solid rgba(100,200,100,0.3); }
+    .status-inactive { background:rgba(255,100,100,0.1); color:#ff6464; border:1px solid rgba(255,100,100,0.3); }
+    .action-row { display:flex; gap:6px; }
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--secondary-30); border:1px solid var(--border-subtle); border-radius:12px; padding:28px; width:100%; max-width:420px; display:flex; flex-direction:column; gap:16px; }
+    .modal h3 { font-size:1rem; text-transform:uppercase; letter-spacing:0.14em; color:var(--accent-10); }
+    .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
+    .btn-cancel { padding:8px 16px; background:transparent; border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-muted); cursor:pointer; font-size:0.85rem; }
+    .btn-cancel:hover { border-color:var(--accent-10); color:var(--accent-10); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="Main Logo.png" alt="Yellow Jack" />
+        <h1>Yellow Jack</h1>
+      </div>
+      <nav class="nav">
+        <a href="dashboard.html" class="nav-link">Dashboard</a>
+        <a href="analytics.html" class="nav-link">Analytics</a>
+        <a href="sales.html" class="nav-link">Sales</a>
+        <a href="payroll.html" class="nav-link">Payroll</a>
+        <a href="roster.html" class="nav-link active">Roster</a>
+        <a href="blacklist.html" class="nav-link">Blacklist</a>
+        <a href="admin.html" class="nav-link">Admin</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header>
+        <div><h2>Roster</h2><span>Manage Yellow Jack staff members</span></div>
+        <span id="currentUser">Loading...</span>
+      </header>
+
+      <!-- Add Member Panel (Manager/Admin only) -->
+      <div class="panel" id="addPanel" style="display:none">
+        <div class="panel-header">
+          <h3 class="panel-title">Add Staff Member</h3>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;margin-top:8px;">
+          <div class="form-field">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" id="addName" placeholder="e.g. Jane Smith" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Rank / Role</label>
+            <input class="form-input" id="addRank" placeholder="e.g. Bartender" />
+          </div>
+          <div class="form-field">
+            <label class="form-label">Date Joined</label>
+            <input class="form-input" id="addDate" type="date" />
+          </div>
+          <button class="button-primary" id="addBtn">Add</button>
+        </div>
+        <div id="addMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:0.88rem;"></div>
+      </div>
+
+      <!-- Roster Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Staff Roster</h3>
+          <span class="panel-subtitle" id="rosterCount">Loading...</span>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Rank</th>
+                <th>Status</th>
+                <th>Date Joined</th>
+                <th id="actionsHeader" style="display:none">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rosterTableBody">
+              <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const token = localStorage.getItem('yj_token');
+    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
+    if (!token || !user) { window.location.href = 'index.html'; }
+    const authHeaders = { 'Authorization': `Bearer ${token}` };
+    const canEdit = ['Manager', 'Admin'].includes(user?.role);
+
+    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
+    if (canEdit) {
+      document.getElementById('addPanel').style.display = 'block';
+      document.getElementById('actionsHeader').style.display = '';
+    }
+
+    async function loadRoster() {
+      try {
+        const res = await fetch(`${API_URL}/api/roster`, { headers: authHeaders });
+        const data = await res.json();
+        const roster = data.roster || [];
+        document.getElementById('rosterCount').textContent = `${roster.length} members`;
+        const tbody = document.getElementById('rosterTableBody');
+        if (!roster.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">No staff members yet</td></tr>';
+          return;
+        }
+        tbody.innerHTML = roster.map(m => {
+          const status = m.status || 'Active';
+          const cls = status === 'Active' ? 'status-active' : 'status-inactive';
+          const joined = m.date_joined ? new Date(m.date_joined).toLocaleDateString() : '—';
+          const actions = canEdit ? `
+            <div class="action-row">
+              <button class="button-secondary" onclick="openEdit(${m.id},'${m.name}','${m.rank||''}','${status}')">Edit</button>
+              <button class="button-secondary" style="border-color:rgba(255,100,100,0.4);color:#ff6464" onclick="deleteRoster(${m.id},'${m.name}')">Remove</button>
+            </div>` : '';
+          return `<tr>
+            <td style="font-weight:700">${m.name}</td>
+            <td class="small">${m.rank || '—'}</td>
+            <td><span class="status-badge ${cls}">${status}</span></td>
+            <td class="small">${joined}</td>
+            ${canEdit ? `<td>${actions}</td>` : ''}
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error('Failed to load roster:', e); }
+    }
+
+    function showMsg(id, text, ok) {
+      const el = document.getElementById(id);
+      el.textContent = text; el.style.display = 'block';
+      el.style.background = ok ? 'rgba(100,200,100,0.1)' : 'rgba(255,100,100,0.1)';
+      el.style.border = ok ? '1px solid rgba(100,200,100,0.3)' : '1px solid rgba(255,100,100,0.3)';
+      el.style.color = ok ? '#6fcf97' : '#ff6464';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    document.getElementById('addBtn').addEventListener('click', async () => {
+      const name = document.getElementById('addName').value.trim();
+      const rank = document.getElementById('addRank').value.trim();
+      const date_joined = document.getElementById('addDate').value;
+      if (!name) { showMsg('addMsg', 'Name is required', false); return; }
+      const res = await fetch(`${API_URL}/api/roster`, {
+        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, rank, date_joined })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg('addMsg', 'Staff member added!', true);
+        document.getElementById('addName').value = '';
+        document.getElementById('addRank').value = '';
+        document.getElementById('addDate').value = '';
+        loadRoster();
+      } else { showMsg('addMsg', data.error || 'Failed', false); }
+    });
+
+    function openEdit(id, name, rank, status) {
+      document.getElementById('editId').value = id;
+      document.getElementById('editName').value = name;
+      document.getElementById('editRank').value = rank;
+      document.getElementById('editStatus').value = status;
+      document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeModal() { document.getElementById('editModal').classList.remove('open'); }
+
+    document.getElementById('saveEditBtn').addEventListener('click', async () => {
+      const id = document.getElementById('editId').value;
+      const res = await fetch(`${API_URL}/api/roster/${id}`, {
+        method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: document.getElementById('editName').value, rank: document.getElementById('editRank').value, status: document.getElementById('editStatus').value })
+      });
+      if (res.ok) { closeModal(); loadRoster(); } else { alert('Failed to update'); }
+    });
+
+    async function deleteRoster(id, name) {
+      if (!confirm(`Remove ${name} from the roster?`)) return;
+      const res = await fetch(`${API_URL}/api/roster/${id}`, { method: 'DELETE', headers: authHeaders });
+      if (res.ok) loadRoster(); else alert('Failed to remove');
+    }
+
+    loadRoster();
+  </script>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <h3>Edit Staff Member</h3>
+      <input type="hidden" id="editId" />
+      <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="editName" /></div>
+      <div class="form-field"><label class="form-label">Rank</label><input class="form-input" id="editRank" /></div>
+      <div class="form-field">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="editStatus">
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="button-primary" id="saveEditBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

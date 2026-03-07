@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yellow Jack – Admin</title>
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .role-select { padding:5px 10px; background:var(--primary-60); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-main); font-size:0.85rem; cursor:pointer; }
+    .role-select:focus { outline:none; border-color:var(--accent-10); }
+    .role-admin { color:var(--accent-10); font-weight:700; }
+    .role-manager { color:#6fcf97; font-weight:700; }
+    .role-staff { color:var(--text-muted); }
+    .access-denied { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:16px; color:var(--text-muted); text-align:center; }
+    .access-denied h3 { font-size:1.5rem; color:var(--accent-10); text-transform:uppercase; letter-spacing:2px; }
+    .stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="Main Logo.png" alt="Yellow Jack" />
+        <h1>Yellow Jack</h1>
+      </div>
+      <nav class="nav">
+        <a href="dashboard.html" class="nav-link">Dashboard</a>
+        <a href="analytics.html" class="nav-link">Analytics</a>
+        <a href="sales.html" class="nav-link">Sales</a>
+        <a href="payroll.html" class="nav-link">Payroll</a>
+        <a href="roster.html" class="nav-link">Roster</a>
+        <a href="blacklist.html" class="nav-link">Blacklist</a>
+        <a href="admin.html" class="nav-link active">Admin</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header>
+        <div><h2>Admin</h2><span>System user management</span></div>
+        <span id="currentUser">Loading...</span>
+      </header>
+
+      <!-- Access Denied (shown to non-admins) -->
+      <div class="access-denied" id="accessDenied" style="display:none">
+        <h3>⚠ Access Restricted</h3>
+        <p>This page is only accessible to Admins.</p>
+        <a href="dashboard.html" class="button-primary" style="text-decoration:none;display:inline-block">Back to Dashboard</a>
+      </div>
+
+      <!-- Admin content -->
+      <div id="adminContent">
+        <!-- Stats -->
+        <div class="stat-grid">
+          <div class="card"><h3>Total Users</h3><div class="value" id="stat-users">—</div></div>
+          <div class="card"><h3>Admins</h3><div class="value" id="stat-admins">—</div></div>
+          <div class="card"><h3>Managers</h3><div class="value" id="stat-managers">—</div></div>
+          <div class="card"><h3>Staff</h3><div class="value" id="stat-staff">—</div></div>
+        </div>
+
+        <!-- User Table -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">User Accounts</h3>
+            <span class="panel-subtitle">Manage roles and access</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Full Name</th>
+                  <th>Role</th>
+                  <th>Joined</th>
+                  <th>Change Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Register New User -->
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">Create New User</h3>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;margin-top:8px;">
+            <div class="form-field"><label class="form-label">Username</label><input class="form-input" id="newUsername" placeholder="username" /></div>
+            <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="newFullName" placeholder="Full Name" /></div>
+            <div class="form-field"><label class="form-label">Password</label><input class="form-input" type="password" id="newPassword" placeholder="••••••••" /></div>
+            <div class="form-field">
+              <label class="form-label">Role</label>
+              <select class="form-input" id="newRole">
+                <option value="Staff">Staff</option>
+                <option value="Manager">Manager</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
+            <button class="button-primary" id="createBtn">Create</button>
+          </div>
+          <div id="createMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:0.88rem;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="config.js"></script>
+  <script>
+    const token = localStorage.getItem('yj_token');
+    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
+    if (!token || !user) { window.location.href = 'index.html'; }
+    const authHeaders = { 'Authorization': `Bearer ${token}` };
+
+    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
+
+    // Restrict to Admin only
+    if (user?.role !== 'Admin') {
+      document.getElementById('adminContent').style.display = 'none';
+      document.getElementById('accessDenied').style.display = 'flex';
+    } else {
+      loadUsers();
+    }
+
+    async function loadUsers() {
+      try {
+        const res = await fetch(`${API_URL}/api/users`, { headers: authHeaders });
+        const data = await res.json();
+        const users = data.users || [];
+
+        // Stats
+        document.getElementById('stat-users').textContent = users.length;
+        document.getElementById('stat-admins').textContent = users.filter(u => u.role === 'Admin').length;
+        document.getElementById('stat-managers').textContent = users.filter(u => u.role === 'Manager').length;
+        document.getElementById('stat-staff').textContent = users.filter(u => u.role === 'Staff').length;
+
+        const tbody = document.getElementById('usersTableBody');
+        if (!users.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:20px">No users found</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => {
+          const roleClass = u.role === 'Admin' ? 'role-admin' : u.role === 'Manager' ? 'role-manager' : 'role-staff';
+          const isSelf = u.id === user.id;
+          const joined = u.created_at ? new Date(u.created_at).toLocaleDateString() : '—';
+          return `<tr>
+            <td style="font-weight:700">${u.username}</td>
+            <td>${u.full_name}</td>
+            <td class="${roleClass}">${u.role}</td>
+            <td class="small">${joined}</td>
+            <td>
+              ${!isSelf ? `<select class="role-select" onchange="changeRole(${u.id}, this.value)">
+                <option ${u.role==='Staff'?'selected':''}>Staff</option>
+                <option ${u.role==='Manager'?'selected':''}>Manager</option>
+                <option ${u.role==='Admin'?'selected':''}>Admin</option>
+              </select>` : '<span class="small" style="color:var(--text-muted)">You</span>'}
+            </td>
+            <td>
+              ${!isSelf ? `<button class="button-secondary" style="border-color:rgba(255,100,100,0.4);color:#ff6464" onclick="deleteUser(${u.id},'${u.username}')">Delete</button>` : '—'}
+            </td>
+          </tr>`;
+        }).join('');
+      } catch (e) { console.error('Failed to load users:', e); }
+    }
+
+    async function changeRole(id, role) {
+      const res = await fetch(`${API_URL}/api/users/${id}`, {
+        method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role })
+      });
+      if (res.ok) loadUsers(); else alert('Failed to update role');
+    }
+
+    async function deleteUser(id, username) {
+      if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+      const res = await fetch(`${API_URL}/api/users/${id}`, { method: 'DELETE', headers: authHeaders });
+      if (res.ok) loadUsers(); else alert('Failed to delete user');
+    }
+
+    function showMsg(text, ok) {
+      const el = document.getElementById('createMsg');
+      el.textContent = text; el.style.display = 'block';
+      el.style.background = ok ? 'rgba(100,200,100,0.1)' : 'rgba(255,100,100,0.1)';
+      el.style.border = ok ? '1px solid rgba(100,200,100,0.3)' : '1px solid rgba(255,100,100,0.3)';
+      el.style.color = ok ? '#6fcf97' : '#ff6464';
+      setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+
+    document.getElementById('createBtn').addEventListener('click', async () => {
+      const username = document.getElementById('newUsername').value.trim();
+      const full_name = document.getElementById('newFullName').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const role = document.getElementById('newRole').value;
+      if (!username || !password || !full_name) { showMsg('All fields are required', false); return; }
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, full_name, password, role })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(`User "${username}" created as ${role}`, true);
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newFullName').value = '';
+        document.getElementById('newPassword').value = '';
+        loadUsers();
+      } else { showMsg(data.error || 'Failed to create user', false); }
+    });
+  </script>
+</body>
+</html>
+
