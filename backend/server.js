@@ -181,29 +181,44 @@ app.get('/', (req, res) => {
 // SALES ENDPOINTS
 // ============================================
 
-// Get all sales (with pagination)
+// Get all sales with pagination + optional filtering by employee and date range
 app.get('/api/sales', requireAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
+    const { employee, date_from, date_to } = req.query;
 
-    const result = await pool.query(
-      'SELECT * FROM sales ORDER BY created_at DESC LIMIT $1 OFFSET $2',
-      [limit, offset]
-    );
+    const conditions = [];
+    const params = [];
 
-    const countResult = await pool.query('SELECT COUNT(*) FROM sales');
+    if (employee) {
+      params.push(`%${employee}%`);
+      conditions.push(`employee_name ILIKE $${params.length}`);
+    }
+    if (date_from) {
+      params.push(date_from);
+      conditions.push(`DATE(created_at) >= $${params.length}`);
+    }
+    if (date_to) {
+      params.push(date_to);
+      conditions.push(`DATE(created_at) <= $${params.length}`);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [salesResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT * FROM sales ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      ),
+      pool.query(`SELECT COUNT(*) FROM sales ${where}`, params)
+    ]);
+
     const total = parseInt(countResult.rows[0].count);
-
     res.json({
-      sales: result.rows,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+      sales: salesResult.rows,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) }
     });
   } catch (error) {
     console.error('Error fetching sales:', error);
@@ -283,6 +298,58 @@ app.delete('/api/sales/:id', requireRole(['Manager', 'Admin']), async (req, res)
 });
 
 // ============================================
+// ANALYTICS ENDPOINTS
+// ============================================
+
+// Summary stats - today, weekly, monthly, all-time, top earners
+app.get('/api/analytics/summary', requireAuth, async (req, res) => {
+  try {
+    const [today, weekly, monthly, allTime, topEarners, salesCount] = await Promise.all([
+      // Today's sales
+      pool.query(`
+        SELECT COALESCE(SUM(total_amount),0) AS total, COALESCE(SUM(business_made),0) AS business, COUNT(*) AS count
+        FROM sales WHERE DATE(created_at) = CURRENT_DATE
+      `),
+      // This week's sales
+      pool.query(`
+        SELECT COALESCE(SUM(total_amount),0) AS total, COALESCE(SUM(business_made),0) AS business, COUNT(*) AS count
+        FROM sales WHERE created_at >= date_trunc('week', CURRENT_TIMESTAMP)
+      `),
+      // This month's sales
+      pool.query(`
+        SELECT COALESCE(SUM(total_amount),0) AS total, COALESCE(SUM(business_made),0) AS business, COUNT(*) AS count
+        FROM sales WHERE created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+      `),
+      // All-time totals
+      pool.query(`
+        SELECT COALESCE(SUM(total_amount),0) AS total, COALESCE(SUM(business_made),0) AS business,
+               COALESCE(SUM(money_earnt),0) AS staff_earnt, COUNT(*) AS count
+        FROM sales
+      `),
+      // Top 5 earners (all-time)
+      pool.query(`
+        SELECT employee_name, total_money_earnt, deals_count
+        FROM employee_ledger ORDER BY total_money_earnt DESC LIMIT 5
+      `),
+      // Active staff count
+      pool.query(`SELECT COUNT(*) AS count FROM employee_ledger`)
+    ]);
+
+    res.json({
+      today: today.rows[0],
+      weekly: weekly.rows[0],
+      monthly: monthly.rows[0],
+      all_time: allTime.rows[0],
+      top_earners: topEarners.rows,
+      active_staff: parseInt(salesCount.rows[0].count)
+    });
+  } catch (error) {
+    console.error('Error fetching analytics summary:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics summary' });
+  }
+});
+
+// ============================================
 // LEDGER ENDPOINTS
 // ============================================
 
@@ -336,7 +403,7 @@ app.post('/api/ledger/pay', requireRole(['Manager', 'Admin']), async (req, res) 
 app.get('/api/roster', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM roster ORDER BY date_joined DESC'
+      'SELECT *, name AS full_name FROM roster ORDER BY date_joined DESC'
     );
     res.json({ roster: result.rows });
   } catch (error) {
@@ -459,6 +526,24 @@ app.delete('/api/blacklist/:id', requireRole(['Manager', 'Admin']), async (req, 
   }
 });
 
+// Get individual employee ledger + their sales history
+app.get('/api/ledger/:employee_name', requireAuth, async (req, res) => {
+  try {
+    const { employee_name } = req.params;
+    const [ledger, sales, payments] = await Promise.all([
+      pool.query('SELECT * FROM employee_ledger WHERE employee_name ILIKE $1', [employee_name]),
+      pool.query('SELECT * FROM sales WHERE employee_name ILIKE $1 ORDER BY created_at DESC LIMIT 20', [employee_name]),
+      pool.query('SELECT * FROM payment_history WHERE employee_name ILIKE $1 ORDER BY paid_at DESC LIMIT 20', [employee_name])
+    ]);
+
+    if (!ledger.rows.length) return res.status(404).json({ error: 'Employee not found in ledger' });
+    res.json({ ledger: ledger.rows[0], sales: sales.rows, payments: payments.rows });
+  } catch (error) {
+    console.error('Error fetching employee ledger:', error);
+    res.status(500).json({ error: 'Failed to fetch employee ledger' });
+  }
+});
+
 // ============================================
 // PAYMENT HISTORY ENDPOINTS
 // ============================================
@@ -473,6 +558,69 @@ app.get('/api/payments', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching payment history:', error);
     res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+});
+
+// ============================================
+// USER MANAGEMENT ENDPOINTS (Admin only)
+// ============================================
+
+// Get all users
+app.get('/api/users', requireRole(['Admin']), async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, username, full_name, role, created_at FROM users ORDER BY created_at ASC'
+    );
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Update user role
+app.put('/api/users/:id', requireRole(['Admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, full_name } = req.body;
+    const validRoles = ['Staff', 'Manager', 'Admin'];
+
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ error: 'Invalid role. Must be Staff, Manager, or Admin' });
+    }
+
+    const result = await pool.query(
+      `UPDATE users SET
+        role = COALESCE($1, role),
+        full_name = COALESCE($2, full_name)
+       WHERE id = $3 RETURNING id, username, full_name, role`,
+      [role || null, full_name || null, id]
+    );
+
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'User updated', user: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Delete user
+app.delete('/api/users/:id', requireRole(['Admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Prevent deleting yourself
+    if (parseInt(id) === req.user.id) {
+      return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'User deleted' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 
