@@ -220,23 +220,17 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="shared.js"></script>
   <script>
-    const token = localStorage.getItem('yj_token');
-    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
+    const user = getUser();
+    if (!user) throw new Error('Not authenticated');
 
-    if (!token || !user) {
-      window.location.href = 'index.html';
-    } else {
-      document.getElementById('userName').textContent = user.full_name;
-      document.getElementById('userRole').textContent = user.role;
-      document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.full_name}`;
-    }
+    document.getElementById('userName').textContent = user.full_name;
+    document.getElementById('userRole').textContent = user.role;
+    document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.full_name}`;
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch(`${API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      }).catch(() => {});
+      await apiFetch(`${API_URL}/auth/logout`, { method: 'POST' }).catch(() => {});
       localStorage.removeItem('yj_token');
       localStorage.removeItem('yj_user');
       window.location.href = 'index.html';

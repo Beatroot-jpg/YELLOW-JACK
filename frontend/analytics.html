@@ -125,53 +125,30 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="shared.js"></script>
   <script>
     const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    const token = localStorage.getItem('yj_token');
-    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
-    if (!token || !user) { window.location.href = 'index.html'; }
-
-    const authHeaders = { 'Authorization': `Bearer ${token}` };
-
-    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
+    const user = getUser();
+    if (!user) throw new Error('Not authenticated');
+    document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
 
     async function loadStats() {
       try {
-        const res = await fetch(`${API_URL}/api/sales?limit=1000`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/analytics/summary`);
         const data = await res.json();
-        const sales = data.sales || [];
-
-        const today = new Date().toISOString().split('T')[0];
-        const tonight = sales
-          .filter(s => s.created_at && s.created_at.startsWith(today))
-          .reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
-
-        const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.business_made || 0), 0);
-        const totalEarnt = sales.reduce((sum, s) => sum + parseFloat(s.money_earnt || 0), 0);
-
-        document.getElementById('stat-tonight').textContent = fmt(tonight);
-        document.getElementById('stat-total-count').textContent = data.pagination?.total ?? sales.length;
-        document.getElementById('stat-total-revenue').textContent = fmt(totalRevenue);
-        document.getElementById('stat-total-earnt').textContent = fmt(totalEarnt);
-      } catch (e) { console.error('Failed to load sales stats:', e); }
-    }
-
-    async function loadLeaderboards() {
-      try {
-        const res = await fetch(`${API_URL}/api/ledger`, { headers: authHeaders });
-        const data = await res.json();
-        const ledger = data.ledger || [];
-
-        document.getElementById('stat-staff').textContent = ledger.length;
+        document.getElementById('stat-tonight').textContent = fmt(data.today?.total || 0);
+        document.getElementById('stat-total-count').textContent = data.all_time?.count || 0;
+        document.getElementById('stat-total-revenue').textContent = fmt(data.all_time?.business || 0);
+        document.getElementById('stat-total-earnt').textContent = fmt(data.all_time?.staff_earnt || 0);
+        document.getElementById('stat-staff').textContent = data.active_staff || 0;
 
         const buildList = (id, entries) => {
           const ul = document.getElementById(id);
-          if (!entries.length) {
+          if (!entries || !entries.length) {
             ul.innerHTML = '<li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">No data yet</span></li>';
             return;
           }
-          ul.innerHTML = entries.slice(0, 5).map((e, i) => `
+          ul.innerHTML = entries.map((e, i) => `
             <li class="leaderboard-item">
               <span class="leaderboard-rank">#${i + 1}</span>
               <span class="leaderboard-name">${e.employee_name}</span>
@@ -179,12 +156,12 @@
             </li>`).join('');
         };
 
-        buildList('leaderboard-weekly', ledger);
-        buildList('leaderboard-monthly', [...ledger].reverse());
-      } catch (e) { console.error('Failed to load leaderboards:', e); }
+        buildList('leaderboard-weekly', data.top_earners);
+        buildList('leaderboard-monthly', [...(data.top_earners || [])].reverse());
+      } catch (e) { console.error('Failed to load analytics:', e); }
     }
 
-    Promise.all([loadStats(), loadLeaderboards()]);
+    loadStats();
   </script>
 </body>
 </html>

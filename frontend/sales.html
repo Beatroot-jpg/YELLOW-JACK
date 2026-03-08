@@ -197,22 +197,19 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="shared.js"></script>
   <script>
     const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    const token = localStorage.getItem('yj_token');
-    const currentUser = JSON.parse(localStorage.getItem('yj_user') || 'null');
-    if (!token || !currentUser) { window.location.href = 'index.html'; }
-
-    const authHeaders = { 'Authorization': `Bearer ${token}` };
-    document.getElementById('currentUser').textContent = `${currentUser?.full_name} · ${currentUser?.role}`;
+    const currentUser = getUser();
+    if (!currentUser) throw new Error('Not authenticated');
+    document.getElementById('currentUser').textContent = `${currentUser.full_name} · ${currentUser.role}`;
 
     let currentPage = 1;
     let totalPages = 1;
 
     async function loadRoster() {
       try {
-        const res = await fetch(`${API_URL}/api/roster`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/roster`);
         const data = await res.json();
         const dl = document.getElementById('sale-employee-list');
         dl.innerHTML = (data.roster || []).map(m => `<option value="${m.full_name}"></option>`).join('');
@@ -221,7 +218,7 @@
 
     async function loadSales(page = 1) {
       try {
-        const res = await fetch(`${API_URL}/api/sales?page=${page}&limit=10`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/sales?page=${page}&limit=10`);
         const data = await res.json();
         const sales = data.sales || [];
         totalPages = data.pagination?.pages || 1;
@@ -261,7 +258,7 @@
 
     async function loadLedger() {
       try {
-        const res = await fetch(`${API_URL}/api/ledger`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/ledger`);
         const data = await res.json();
         const ledger = data.ledger || [];
 
@@ -287,9 +284,9 @@
     async function payStaff(name, amount) {
       if (!confirm(`Pay ${fmt(amount)} to ${name}?`)) return;
       try {
-        const res = await fetch(`${API_URL}/api/ledger/pay`, {
+        const res = await apiFetch(`${API_URL}/api/ledger/pay`, {
           method: 'POST',
-          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ employee_name: name, amount })
         });
         if (res.ok) { loadLedger(); } else { alert('Payment failed.'); }
@@ -301,9 +298,9 @@
       const btn = document.getElementById('saveBtn');
       btn.disabled = true; btn.textContent = 'Saving...';
       try {
-        const res = await fetch(`${API_URL}/api/sales`, {
+        const res = await apiFetch(`${API_URL}/api/sales`, {
           method: 'POST',
-          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             employee_name: document.getElementById('sale-employee').value,
             description: document.getElementById('sale-description').value,
@@ -337,7 +334,7 @@
 
     async function loadActiveShifts() {
       try {
-        const res = await fetch(`${API_URL}/api/timesheets/active`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/timesheets/active`);
         const data = await res.json();
         const active = data.active || [];
 
@@ -415,9 +412,9 @@
       btn.disabled = true;
 
       try {
-        const res = await fetch(`${API_URL}/api/timesheets/${endpoint}`, {
+        const res = await apiFetch(`${API_URL}/api/timesheets/${endpoint}`, {
           method: 'POST',
-          headers: { ...authHeaders, 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ employee_name: name })
         });
         const data = await res.json();
@@ -437,7 +434,7 @@
 
     // Populate clock employee list from same roster
     async function populateClockRoster() {
-      const res = await fetch(`${API_URL}/api/roster`, { headers: authHeaders }).catch(() => null);
+      const res = await apiFetch(`${API_URL}/api/roster`).catch(() => null);
       if (!res) return;
       const data = await res.json();
       const dl = document.getElementById('clock-employee-list');

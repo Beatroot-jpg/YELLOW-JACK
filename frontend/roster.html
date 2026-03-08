@@ -92,15 +92,35 @@
     </main>
   </div>
 
-  <script src="config.js"></script>
-  <script>
-    const token = localStorage.getItem('yj_token');
-    const user = JSON.parse(localStorage.getItem('yj_user') || 'null');
-    if (!token || !user) { window.location.href = 'index.html'; }
-    const authHeaders = { 'Authorization': `Bearer ${token}` };
-    const canEdit = ['Manager', 'Admin'].includes(user?.role);
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <h3>Edit Staff Member</h3>
+      <input type="hidden" id="editId" />
+      <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="editName" /></div>
+      <div class="form-field"><label class="form-label">Rank</label><input class="form-input" id="editRank" /></div>
+      <div class="form-field">
+        <label class="form-label">Status</label>
+        <select class="form-input" id="editStatus">
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="button-primary" id="saveEditBtn">Save Changes</button>
+      </div>
+    </div>
+  </div>
 
-    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
+  <script src="config.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    const user = getUser();
+    if (!user) throw new Error('Not authenticated');
+    const canEdit = ['Manager', 'Admin'].includes(user.role);
+
+    document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
     if (canEdit) {
       document.getElementById('addPanel').style.display = 'block';
       document.getElementById('actionsHeader').style.display = '';
@@ -108,7 +128,7 @@
 
     async function loadRoster() {
       try {
-        const res = await fetch(`${API_URL}/api/roster`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/roster`);
         const data = await res.json();
         const roster = data.roster || [];
         document.getElementById('rosterCount').textContent = `${roster.length} members`;
@@ -151,8 +171,8 @@
       const rank = document.getElementById('addRank').value.trim();
       const date_joined = document.getElementById('addDate').value;
       if (!name) { showMsg('addMsg', 'Name is required', false); return; }
-      const res = await fetch(`${API_URL}/api/roster`, {
-        method: 'POST', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      const res = await apiFetch(`${API_URL}/api/roster`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, rank, date_joined })
       });
       const data = await res.json();
@@ -177,8 +197,8 @@
 
     document.getElementById('saveEditBtn').addEventListener('click', async () => {
       const id = document.getElementById('editId').value;
-      const res = await fetch(`${API_URL}/api/roster/${id}`, {
-        method: 'PUT', headers: { ...authHeaders, 'Content-Type': 'application/json' },
+      const res = await apiFetch(`${API_URL}/api/roster/${id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: document.getElementById('editName').value, rank: document.getElementById('editRank').value, status: document.getElementById('editStatus').value })
       });
       if (res.ok) { closeModal(); loadRoster(); } else { alert('Failed to update'); }
@@ -186,33 +206,12 @@
 
     async function deleteRoster(id, name) {
       if (!confirm(`Remove ${name} from the roster?`)) return;
-      const res = await fetch(`${API_URL}/api/roster/${id}`, { method: 'DELETE', headers: authHeaders });
+      const res = await apiFetch(`${API_URL}/api/roster/${id}`, { method: 'DELETE' });
       if (res.ok) loadRoster(); else alert('Failed to remove');
     }
 
     loadRoster();
   </script>
-
-  <!-- Edit Modal -->
-  <div class="modal-overlay" id="editModal">
-    <div class="modal">
-      <h3>Edit Staff Member</h3>
-      <input type="hidden" id="editId" />
-      <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="editName" /></div>
-      <div class="form-field"><label class="form-label">Rank</label><input class="form-input" id="editRank" /></div>
-      <div class="form-field">
-        <label class="form-label">Status</label>
-        <select class="form-input" id="editStatus">
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="button-primary" id="saveEditBtn">Save Changes</button>
-      </div>
-    </div>
-  </div>
 </body>
 </html>
 
