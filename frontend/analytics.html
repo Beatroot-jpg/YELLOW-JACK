@@ -10,7 +10,27 @@
     .analytics-row { margin-top: 10px; display: grid; gap: 18px; }
     .analytics-row--charts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr); }
     .analytics-row--boards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .analytics-row--totals { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .analytics-row--totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .totals-section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .totals-section-head h3 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent-10);
+    }
+    .totals-section-head span {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
     .chart-placeholder {
       margin-top: 6px; height: 190px; border-radius: 12px;
       border: 1px dashed rgba(254,226,80,0.3);
@@ -19,6 +39,9 @@
       color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.16em;
     }
     .totals-grid-card .note { font-size: 0.76rem; }
+    @media (max-width: 980px) {
+      .analytics-row--totals { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    }
   </style>
 </head>
 <body>
@@ -53,11 +76,6 @@
           <h3>Tonight's Sales</h3>
           <div class="value" id="stat-tonight">—</div>
           <div class="note">Running total for today</div>
-        </div>
-        <div class="card">
-          <h3>Total Sales</h3>
-          <div class="value" id="stat-total-count">—</div>
-          <div class="note">All recorded sales entries</div>
         </div>
         <div class="card">
           <h3>Active Staff</h3>
@@ -108,8 +126,18 @@
         </div>
       </section>
 
-      <!-- Totals row: monthly and weekly total revenue trackers -->
+      <div class="totals-section-head">
+        <h3>Overall Totals</h3>
+        <span>All-time business performance</span>
+      </div>
+
+      <!-- Totals row: all-time business metrics -->
       <section class="analytics-row analytics-row--totals">
+        <div class="card totals-grid-card">
+          <h3>Total Sales</h3>
+          <div class="value" id="stat-total-count">—</div>
+          <div class="note">All recorded sales entries</div>
+        </div>
         <div class="card totals-grid-card">
           <h3>Total Revenue (All Time)</h3>
           <div class="value" id="stat-total-revenue">—</div>
