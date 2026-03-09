@@ -11,26 +11,6 @@
     .analytics-row--charts { grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr); }
     .analytics-row--boards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .analytics-row--totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .totals-section-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-top: 6px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-    .totals-section-head h3 {
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      color: var(--accent-10);
-    }
-    .totals-section-head span {
-      font-size: 0.76rem;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--text-muted);
-    }
     .chart-placeholder {
       margin-top: 6px; height: 190px; border-radius: 12px;
       border: 1px dashed rgba(254,226,80,0.3);
@@ -71,6 +51,15 @@
         <span id="currentUser">Loading...</span>
       </header>
 
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Live Snapshot</span>
+          <h3 class="section-intro__title">Tonight's core numbers</h3>
+          <p class="section-intro__desc">A quick operational view of current sales momentum and active staff contribution.</p>
+        </div>
+        <span class="section-intro__meta">Updated from live backend totals</span>
+      </div>
+
       <section class="cards">
         <div class="card">
           <h3>Tonight's Sales</h3>
@@ -83,6 +72,14 @@
           <div class="note">Staff with earnings on the ledger</div>
         </div>
       </section>
+
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Trend Panels</span>
+          <h3 class="section-intro__title">Visual comparisons</h3>
+          <p class="section-intro__desc">Reserved for charts that compare current performance to previous periods.</p>
+        </div>
+      </div>
 
       <!-- Charts row: weekly vs last week, tonight vs last night -->
       <section class="analytics-row analytics-row--charts">
@@ -102,6 +99,14 @@
           <div class="chart-placeholder">Tonight vs last night chart (API-driven later)</div>
         </div>
       </section>
+
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Top Performers</span>
+          <h3 class="section-intro__title">Leaderboard breakdowns</h3>
+          <p class="section-intro__desc">See who is driving revenue and staff earnings across the venue.</p>
+        </div>
+      </div>
 
       <!-- Leaderboards row: weekly and monthly top sellers -->
       <section class="analytics-row analytics-row--boards">
@@ -130,9 +135,13 @@
         </div>
       </section>
 
-      <div class="totals-section-head">
-        <h3>Overall Totals</h3>
-        <span>All-time business performance</span>
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Overall Totals</span>
+          <h3 class="section-intro__title">All-time business performance</h3>
+          <p class="section-intro__desc">These totals aggregate the full recorded dataset for sales volume, business revenue, and staff earnings.</p>
+        </div>
+        <span class="section-intro__meta">Historical totals</span>
       </div>
 
       <!-- Totals row: all-time business metrics -->

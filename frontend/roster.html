@@ -33,6 +33,15 @@
         <span id="currentUser">Loading...</span>
       </header>
 
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Team Management</span>
+          <h3 class="section-intro__title">Maintain the active Yellow Jack roster</h3>
+          <p class="section-intro__desc">Add new staff members, update their role or activity status, and keep your team list current.</p>
+        </div>
+        <span class="section-intro__meta">Operational staffing control</span>
+      </div>
+
       <!-- Add Member Panel (Manager/Admin only) -->
       <div class="panel" id="addPanel" style="display:none">
         <div class="panel-header">
@@ -74,7 +83,8 @@
               </tr>
             </thead>
             <tbody id="rosterTableBody">
-              <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -124,7 +134,7 @@
         document.getElementById('rosterCount').textContent = `${roster.length} members`;
         const tbody = document.getElementById('rosterTableBody');
         if (!roster.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">No staff members yet</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◎', title: 'No staff members yet', description: 'Add your first team member to start building the roster.' })}</td></tr>`;
           return;
         }
         tbody.innerHTML = roster.map(m => {
@@ -144,7 +154,11 @@
             ${canEdit ? `<td>${actions}</td>` : ''}
           </tr>`;
         }).join('');
-      } catch (e) { console.error('Failed to load roster:', e); }
+      } catch (e) {
+        console.error('Failed to load roster:', e);
+        document.getElementById('rosterTableBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load roster', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load roster data.');
+      }
     }
 
     function showMsg(id, text, ok) {
@@ -156,22 +170,36 @@
     }
 
     document.getElementById('addBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('addBtn');
       const name = document.getElementById('addName').value.trim();
       const rank = document.getElementById('addRank').value.trim();
       const date_joined = document.getElementById('addDate').value;
       if (!name) { showMsg('addMsg', 'Name is required', false); return; }
-      const res = await apiFetch(`${API_URL}/api/roster`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, rank, date_joined })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showMsg('addMsg', 'Staff member added!', true);
-        document.getElementById('addName').value = '';
-        document.getElementById('addRank').value = '';
-        document.getElementById('addDate').value = '';
-        loadRoster();
-      } else { showMsg('addMsg', data.error || 'Failed', false); }
+      btn.dataset.originalLabel = 'Add';
+      setButtonLoading(btn, true, 'Adding...');
+      try {
+        const res = await apiFetch(`${API_URL}/api/roster`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, rank, date_joined })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMsg('addMsg', 'Staff member added!', true);
+          showToast('success', `${name} added to the roster.`);
+          document.getElementById('addName').value = '';
+          document.getElementById('addRank').value = '';
+          document.getElementById('addDate').value = '';
+          loadRoster();
+        } else {
+          showMsg('addMsg', data.error || 'Failed', false);
+          showToast('error', data.error || 'Failed to add staff member.');
+        }
+      } catch {
+        showMsg('addMsg', 'Connection error', false);
+        showToast('error', 'Connection error while adding staff member.');
+      } finally {
+        setButtonLoading(btn, false);
+      }
     });
 
     function openEdit(id, name, rank, status) {
@@ -185,18 +213,38 @@
     function closeModal() { document.getElementById('editModal').classList.remove('open'); }
 
     document.getElementById('saveEditBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('saveEditBtn');
+      btn.dataset.originalLabel = 'Save Changes';
+      setButtonLoading(btn, true, 'Saving...');
       const id = document.getElementById('editId').value;
-      const res = await apiFetch(`${API_URL}/api/roster/${id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: document.getElementById('editName').value, rank: document.getElementById('editRank').value, status: document.getElementById('editStatus').value })
-      });
-      if (res.ok) { closeModal(); loadRoster(); } else { alert('Failed to update'); }
+      try {
+        const res = await apiFetch(`${API_URL}/api/roster/${id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: document.getElementById('editName').value, rank: document.getElementById('editRank').value, status: document.getElementById('editStatus').value })
+        });
+        if (res.ok) {
+          closeModal();
+          showToast('success', 'Roster entry updated.');
+          loadRoster();
+        } else {
+          showToast('error', 'Failed to update roster entry.');
+        }
+      } catch {
+        showToast('error', 'Connection error while updating roster entry.');
+      } finally {
+        setButtonLoading(btn, false);
+      }
     });
 
     async function deleteRoster(id, name) {
       if (!confirm(`Remove ${name} from the roster?`)) return;
       const res = await apiFetch(`${API_URL}/api/roster/${id}`, { method: 'DELETE' });
-      if (res.ok) loadRoster(); else alert('Failed to remove');
+      if (res.ok) {
+        showToast('success', `${name} removed from the roster.`);
+        loadRoster();
+      } else {
+        showToast('error', 'Failed to remove roster entry.');
+      }
     }
 
     loadRoster();

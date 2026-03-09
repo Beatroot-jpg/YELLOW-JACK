@@ -6,14 +6,10 @@
   <title>Yellow Jack – Payroll</title>
   <link rel="stylesheet" href="shared.css" />
   <style>
-    .week-picker { display:flex; align-items:center; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-    .week-picker label { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); font-weight:600; }
-    .week-picker select { padding:8px 12px; background:var(--primary-60); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-main); font-size:0.9rem; cursor:pointer; }
-    .week-picker select:focus { outline:none; border-color:var(--accent-10); }
     .hours-badge { font-size:1.1rem; font-weight:700; color:var(--accent-10); }
     .shifts-badge { font-size:0.82rem; color:var(--text-muted); }
     .summary-bar { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
-    .summary-stat { background:var(--secondary-30); border:1px solid var(--border-subtle); border-radius:8px; padding:12px 18px; }
+    .summary-stat { background:linear-gradient(180deg, rgba(70,39,15,0.94) 0%, rgba(42,22,8,0.98) 100%); border:1px solid rgba(254,226,80,0.14); border-radius:14px; padding:14px 18px; box-shadow:var(--shadow-card); min-width:180px; }
     .summary-stat .label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); margin-bottom:4px; }
     .summary-stat .val { font-size:1.3rem; font-weight:700; color:var(--accent-10); }
   </style>
@@ -45,6 +41,15 @@
         <span id="currentUser">Loading...</span>
       </header>
 
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Weekly Overview</span>
+          <h3 class="section-intro__title">Payroll-ready shift totals</h3>
+          <p class="section-intro__desc">Review weekly staff hours and shift counts before preparing payout decisions later on.</p>
+        </div>
+        <span class="section-intro__meta">Timesheet-backed summaries</span>
+      </div>
+
       <!-- Summary stats -->
       <div class="summary-bar" id="summaryBar">
         <div class="summary-stat"><div class="label">Staff This Week</div><div class="val" id="stat-staff"><div class="skeleton skeleton-line skeleton-line--sm"></div></div></div>
@@ -56,11 +61,19 @@
       <div class="panel">
         <div class="panel-header">
           <h3 class="panel-title">Weekly Hours</h3>
-          <div class="week-picker">
-            <label for="weekPicker">Week</label>
-            <select id="weekPicker">
-              <option value="">Current Week</option>
-            </select>
+          <span class="panel-subtitle" id="weeklyMeta">Current week summary</span>
+        </div>
+        <div class="toolbar">
+          <div class="toolbar-group">
+            <div class="toolbar-field">
+              <label class="toolbar-label" for="weekPicker">Week</label>
+              <select id="weekPicker" class="form-input">
+                <option value="">Current Week</option>
+              </select>
+            </div>
+          </div>
+          <div class="toolbar-actions">
+            <span class="toolbar-meta">Hours grouped by employee</span>
           </div>
         </div>
         <div class="table-wrapper">
@@ -79,6 +92,14 @@
               <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Shift Archive</span>
+          <h3 class="section-intro__title">Clock history and durations</h3>
+          <p class="section-intro__desc">Browse completed sessions and active shift entries recorded through the sales page clock system.</p>
         </div>
       </div>
 
@@ -166,6 +187,7 @@
         document.getElementById('stat-staff').textContent = summary.length;
         document.getElementById('stat-hours').textContent = totalHours.toFixed(1) + 'h';
         document.getElementById('stat-shifts').textContent = totalShifts;
+        document.getElementById('weeklyMeta').textContent = weekStart ? `Week of ${new Date(weekStart).toLocaleDateString()}` : 'Current week summary';
 
         // Populate table
         const tbody = document.getElementById('weeklyTableBody');

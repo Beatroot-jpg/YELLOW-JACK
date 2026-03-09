@@ -49,6 +49,15 @@
 
       <!-- Admin content -->
       <div id="adminContent">
+        <div class="section-intro">
+          <div class="section-intro__copy">
+            <span class="section-intro__eyebrow">Administration</span>
+            <h3 class="section-intro__title">Manage user access and roles</h3>
+            <p class="section-intro__desc">Review account totals, adjust role permissions, and create new users for staff operations.</p>
+          </div>
+          <span class="section-intro__meta">Admin-only controls</span>
+        </div>
+
         <!-- Stats -->
         <div class="stat-grid">
           <div class="card"><h3>Total Users</h3><div class="value" id="stat-users">—</div></div>
@@ -76,7 +85,8 @@
                 </tr>
               </thead>
               <tbody id="usersTableBody">
-                <tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+                <tr><td colspan="6" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(6,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="6" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(6,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -136,7 +146,7 @@
 
         const tbody = document.getElementById('usersTableBody');
         if (!users.length) {
-          tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:20px">No users found</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '⚙', title: 'No users found', description: 'Create a staff, manager, or admin account to get started.' })}</td></tr>`;
           return;
         }
 
@@ -161,7 +171,11 @@
             </td>
           </tr>`;
         }).join('');
-      } catch (e) { console.error('Failed to load users:', e); }
+      } catch (e) {
+        console.error('Failed to load users:', e);
+        document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '!', title: 'Unable to load users', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load user accounts.');
+      }
     }
 
     async function changeRole(id, role) {
@@ -169,13 +183,23 @@
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role })
       });
-      if (res.ok) loadUsers(); else alert('Failed to update role');
+      if (res.ok) {
+        showToast('success', `User role updated to ${role}.`);
+        loadUsers();
+      } else {
+        showToast('error', 'Failed to update user role.');
+      }
     }
 
     async function deleteUser(id, username) {
       if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
       const res = await apiFetch(`${API_URL}/api/users/${id}`, { method: 'DELETE' });
-      if (res.ok) loadUsers(); else alert('Failed to delete user');
+      if (res.ok) {
+        showToast('success', `Deleted user "${username}".`);
+        loadUsers();
+      } else {
+        showToast('error', 'Failed to delete user.');
+      }
     }
 
     function showMsg(text, ok) {
@@ -187,23 +211,37 @@
     }
 
     document.getElementById('createBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('createBtn');
       const username = document.getElementById('newUsername').value.trim();
       const full_name = document.getElementById('newFullName').value.trim();
       const password = document.getElementById('newPassword').value;
       const role = document.getElementById('newRole').value;
       if (!username || !password || !full_name) { showMsg('All fields are required', false); return; }
-      const res = await apiFetch(`${API_URL}/auth/register`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, full_name, password, role })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showMsg(`User "${username}" created as ${role}`, true);
-        document.getElementById('newUsername').value = '';
-        document.getElementById('newFullName').value = '';
-        document.getElementById('newPassword').value = '';
-        loadUsers();
-      } else { showMsg(data.error || 'Failed to create user', false); }
+      btn.dataset.originalLabel = 'Create';
+      setButtonLoading(btn, true, 'Creating...');
+      try {
+        const res = await apiFetch(`${API_URL}/auth/register`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, full_name, password, role })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMsg(`User "${username}" created as ${role}`, true);
+          showToast('success', `User "${username}" created.`);
+          document.getElementById('newUsername').value = '';
+          document.getElementById('newFullName').value = '';
+          document.getElementById('newPassword').value = '';
+          loadUsers();
+        } else {
+          showMsg(data.error || 'Failed to create user', false);
+          showToast('error', data.error || 'Failed to create user.');
+        }
+      } catch {
+        showMsg('Connection error while creating user', false);
+        showToast('error', 'Connection error while creating user.');
+      } finally {
+        setButtonLoading(btn, false);
+      }
     });
   </script>
 </body>

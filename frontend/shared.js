@@ -100,6 +100,25 @@ function createActiveShiftSkeleton(itemCount = 3) {
     </div>`).join('');
 }
 
+function setButtonLoading(button, isLoading, loadingText = 'Working...') {
+  if (!button) return;
+  if (isLoading) {
+    if (!button.dataset.originalLabel) {
+      button.dataset.originalLabel = button.innerHTML;
+    }
+    button.disabled = true;
+    button.classList.add('is-loading');
+    button.innerHTML = `<span class="button-loading__spinner"></span><span>${loadingText}</span>`;
+    return;
+  }
+
+  button.disabled = false;
+  button.classList.remove('is-loading');
+  if (button.dataset.originalLabel) {
+    button.innerHTML = button.dataset.originalLabel;
+  }
+}
+
 function apiFetch(url, options = {}) {
   const token = localStorage.getItem('yj_token');
   const headers = {

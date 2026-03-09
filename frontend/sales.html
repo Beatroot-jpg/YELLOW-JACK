@@ -37,6 +37,15 @@
         <span id="currentUser">Loading...</span>
       </header>
 
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Sales Overview</span>
+          <h3 class="section-intro__title">Live venue performance</h3>
+          <p class="section-intro__desc">Track current volume, historical sales count, and business revenue from one operational view.</p>
+        </div>
+        <span class="section-intro__meta">Real-time operational dashboard</span>
+      </div>
+
       <section class="cards">
         <div class="card">
           <h3>Tonight's Sales</h3>
@@ -54,6 +63,14 @@
           <div class="note">Business share (90%) of all sales</div>
         </div>
       </section>
+
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Sales Operations</span>
+          <h3 class="section-intro__title">Log and review venue transactions</h3>
+          <p class="section-intro__desc">Capture new sales, filter recorded history, and monitor the ledger owed to staff.</p>
+        </div>
+      </div>
 
       <section class="analytics-row analytics-row--charts">
         <div class="panel">
@@ -108,6 +125,27 @@
           <div class="panel-header">
             <h3 class="panel-title">Sales History</h3>
             <span class="panel-subtitle">10 entries per page</span>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <div class="toolbar-field toolbar-field--grow">
+                <label class="toolbar-label" for="filterEmployee">Staff member</label>
+                <input class="form-input" id="filterEmployee" placeholder="Filter by employee name" />
+              </div>
+              <div class="toolbar-field">
+                <label class="toolbar-label" for="filterDateFrom">Date from</label>
+                <input class="form-input" id="filterDateFrom" type="date" />
+              </div>
+              <div class="toolbar-field">
+                <label class="toolbar-label" for="filterDateTo">Date to</label>
+                <input class="form-input" id="filterDateTo" type="date" />
+              </div>
+            </div>
+            <div class="toolbar-actions">
+              <span class="toolbar-meta" id="salesFilterMeta">Showing all sales</span>
+              <button type="button" class="button-ghost" id="clearFiltersBtn">Clear</button>
+              <button type="button" class="button-primary" id="applyFiltersBtn">Apply Filters</button>
+            </div>
           </div>
           <div class="table-wrapper">
             <table class="data-table data-table--ledger">
@@ -165,6 +203,14 @@
         </div>
       </section>
 
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Shift Control</span>
+          <h3 class="section-intro__title">Clock staff in and out</h3>
+          <p class="section-intro__desc">Use the shift controls below to start and stop timed sessions that feed into payroll tracking.</p>
+        </div>
+      </div>
+
       <!-- Clock In / Out Panel -->
       <section class="analytics-row analytics-row--boards">
         <div class="panel">
@@ -209,6 +255,23 @@
 
     let currentPage = 1;
     let totalPages = 1;
+    const currentFilters = { employee: '', date_from: '', date_to: '' };
+
+    function updateSalesFilterMeta() {
+      const parts = [];
+      if (currentFilters.employee) parts.push(`Employee: ${currentFilters.employee}`);
+      if (currentFilters.date_from) parts.push(`From: ${currentFilters.date_from}`);
+      if (currentFilters.date_to) parts.push(`To: ${currentFilters.date_to}`);
+      document.getElementById('salesFilterMeta').textContent = parts.length ? parts.join(' • ') : 'Showing all sales';
+    }
+
+    function buildSalesQuery(page = 1) {
+      const params = new URLSearchParams({ page, limit: 10 });
+      if (currentFilters.employee) params.set('employee', currentFilters.employee);
+      if (currentFilters.date_from) params.set('date_from', currentFilters.date_from);
+      if (currentFilters.date_to) params.set('date_to', currentFilters.date_to);
+      return params.toString();
+    }
 
     async function loadRoster() {
       try {
@@ -222,7 +285,7 @@
     async function loadSales(page = 1) {
       try {
         document.getElementById('salesTableBody').innerHTML = createTableSkeleton(7, 4);
-        const res = await apiFetch(`${API_URL}/api/sales?page=${page}&limit=10`);
+        const res = await apiFetch(`${API_URL}/api/sales?${buildSalesQuery(page)}`);
         const data = await res.json();
         const sales = data.sales || [];
         totalPages = data.pagination?.pages || 1;
@@ -257,6 +320,7 @@
         document.getElementById('nextBtn').disabled = currentPage >= totalPages;
         document.getElementById('tableMeta').textContent =
           `Showing page ${currentPage} of ${totalPages} · ${data.pagination?.total ?? 0} total sales`;
+        updateSalesFilterMeta();
       } catch (e) {
         console.error('Failed to load sales:', e);
         document.getElementById('salesTableBody').innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '!', title: 'Unable to load sales', description: 'Please refresh and try again.' })}</td></tr>`;
@@ -316,7 +380,8 @@
     document.getElementById('saleForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('saveBtn');
-      btn.disabled = true; btn.textContent = 'Saving...';
+      btn.dataset.originalLabel = 'Save Sale';
+      setButtonLoading(btn, true, 'Saving...');
       try {
         const res = await apiFetch(`${API_URL}/api/sales`, {
           method: 'POST',
@@ -338,11 +403,34 @@
       } catch {
         showToast('error', 'Connection error while saving sale.');
       }
-      btn.disabled = false; btn.textContent = 'Save Sale';
+      setButtonLoading(btn, false);
     });
 
     document.getElementById('prevBtn').addEventListener('click', () => loadSales(currentPage - 1));
     document.getElementById('nextBtn').addEventListener('click', () => loadSales(currentPage + 1));
+    document.getElementById('applyFiltersBtn').addEventListener('click', async () => {
+      currentFilters.employee = document.getElementById('filterEmployee').value.trim();
+      currentFilters.date_from = document.getElementById('filterDateFrom').value;
+      currentFilters.date_to = document.getElementById('filterDateTo').value;
+      const btn = document.getElementById('applyFiltersBtn');
+      btn.dataset.originalLabel = 'Apply Filters';
+      setButtonLoading(btn, true, 'Applying...');
+      await loadSales(1);
+      setButtonLoading(btn, false);
+      showToast('info', currentFilters.employee || currentFilters.date_from || currentFilters.date_to ? 'Filters applied to sales history.' : 'Showing all sales.');
+    });
+
+    document.getElementById('clearFiltersBtn').addEventListener('click', async () => {
+      currentFilters.employee = '';
+      currentFilters.date_from = '';
+      currentFilters.date_to = '';
+      document.getElementById('filterEmployee').value = '';
+      document.getElementById('filterDateFrom').value = '';
+      document.getElementById('filterDateTo').value = '';
+      updateSalesFilterMeta();
+      await loadSales(1);
+      showToast('info', 'Sales filters cleared.');
+    });
 
     // ── Clock In / Out ──────────────────────────────────────────
     let activeTimers = {};
@@ -419,7 +507,7 @@
       if (!name) { btn.textContent = 'Clock In'; return; }
 
       try {
-        const res = await fetch(`${API_URL}/api/timesheets/active`, { headers: authHeaders });
+        const res = await apiFetch(`${API_URL}/api/timesheets/active`);
         const data = await res.json();
         const isActive = (data.active || []).some(a => a.employee_name.toLowerCase() === name.toLowerCase());
         btn.textContent = isActive ? 'Clock Out' : 'Clock In';
@@ -437,7 +525,8 @@
 
       const isClockin = btn.textContent.includes('In');
       const endpoint = isClockin ? 'clock-in' : 'clock-out';
-      btn.disabled = true;
+      btn.dataset.originalLabel = btn.textContent;
+      setButtonLoading(btn, true, isClockin ? 'Clocking In...' : 'Clocking Out...');
 
       try {
         const res = await apiFetch(`${API_URL}/api/timesheets/${endpoint}`, {
@@ -460,7 +549,7 @@
         showToast('error', 'Connection error while updating clock status.');
       }
 
-      btn.disabled = false;
+      setButtonLoading(btn, false);
     });
 
     Promise.all([loadRoster(), loadSales(1), loadLedger(), loadActiveShifts()]);
