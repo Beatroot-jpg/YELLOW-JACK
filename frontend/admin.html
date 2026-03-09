@@ -93,11 +93,11 @@
         </div>
 
         <!-- Register New User -->
-        <div class="panel">
+        <div class="panel" id="createUserPanel">
           <div class="panel-header">
             <h3 class="panel-title">Create New User</h3>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;margin-top:8px;">
+          <div class="form-grid form-grid--4-auto">
             <div class="form-field"><label class="form-label">Username</label><input class="form-input" id="newUsername" placeholder="username" /></div>
             <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="newFullName" placeholder="Full Name" /></div>
             <div class="form-field"><label class="form-label">Password</label><input class="form-input" type="password" id="newPassword" placeholder="••••••••" /></div>
@@ -111,6 +111,7 @@
             </div>
             <button class="button-primary" id="createBtn">Create</button>
           </div>
+          <div class="form-help">Create secure access for new staff, managers, or admin users.</div>
           <div id="createMsg" class="ui-message"></div>
         </div>
       </div>
@@ -146,7 +147,7 @@
 
         const tbody = document.getElementById('usersTableBody');
         if (!users.length) {
-          tbody.innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '⚙', title: 'No users found', description: 'Create a staff, manager, or admin account to get started.' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '⚙', title: 'No users found', description: 'Create a staff, manager, or admin account to get started.', actionLabel: 'Create user', actionHref: '#createUserPanel' })}</td></tr>`;
           return;
         }
 

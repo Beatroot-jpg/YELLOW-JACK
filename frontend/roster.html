@@ -47,7 +47,7 @@
         <div class="panel-header">
           <h3 class="panel-title">Add Staff Member</h3>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;margin-top:8px;">
+        <div class="form-grid form-grid--3-auto">
           <div class="form-field">
             <label class="form-label">Full Name</label>
             <input class="form-input" id="addName" placeholder="e.g. Jane Smith" />
@@ -62,6 +62,7 @@
           </div>
           <button class="button-primary" id="addBtn">Add</button>
         </div>
+        <div class="form-help">Create a new roster entry with role and join date for scheduling visibility.</div>
         <div id="addMsg" class="ui-message"></div>
       </div>
 
@@ -134,7 +135,7 @@
         document.getElementById('rosterCount').textContent = `${roster.length} members`;
         const tbody = document.getElementById('rosterTableBody');
         if (!roster.length) {
-          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◎', title: 'No staff members yet', description: 'Add your first team member to start building the roster.' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◎', title: 'No staff members yet', description: 'Add your first team member to start building the roster.', actionLabel: canEdit ? 'Add team member' : 'Back to dashboard', actionHref: canEdit ? '#addPanel' : 'dashboard.html' })}</td></tr>`;
           return;
         }
         tbody.innerHTML = roster.map(m => {

@@ -192,7 +192,7 @@
         // Populate table
         const tbody = document.getElementById('weeklyTableBody');
         if (!summary.length) {
-          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◫', title: 'No timesheet data', description: 'Clocked shifts for this week will appear here.' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◫', title: 'No timesheet data', description: 'Clocked shifts for this week will appear here.', actionLabel: 'Open Sales Clock', actionHref: 'sales.html' })}</td></tr>`;
           return;
         }
         tbody.innerHTML = summary.map(r => `
@@ -221,7 +221,7 @@
 
         const tbody = document.getElementById('shiftLogBody');
         if (!shifts.length) {
-          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◷', title: 'No shift records yet', description: 'Clock in and out on the sales page to build your payroll log.' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◷', title: 'No shift records yet', description: 'Clock in and out on the sales page to build your payroll log.', actionLabel: 'Go to Sales', actionHref: 'sales.html' })}</td></tr>`;
         } else {
           tbody.innerHTML = shifts.map(s => {
             const dur = s.duration_minutes !== null ? fmtDuration(s.duration_minutes) : '<span style="color:var(--accent-10);font-size:0.8rem">⏱ Active</span>';

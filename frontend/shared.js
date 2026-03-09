@@ -63,12 +63,16 @@ function consumeQueuedToast() {
   }
 }
 
-function createEmptyState({ icon = '•', title = 'Nothing here yet', description = 'There is no data to show right now.' } = {}) {
+function createEmptyState({ icon = '•', title = 'Nothing here yet', description = 'There is no data to show right now.', actionLabel = '', actionHref = '', actionClass = 'button-primary', compact = false } = {}) {
+  const actionMarkup = actionLabel && actionHref
+    ? `<div class="empty-state__actions"><a href="${actionHref}" class="${actionClass} empty-state__action">${actionLabel}</a></div>`
+    : '';
   return `
-    <div class="empty-state">
+    <div class="empty-state ${compact ? 'empty-state--compact' : ''}">
       <div class="empty-state__icon">${icon}</div>
       <div class="empty-state__title">${title}</div>
       <div class="empty-state__desc">${description}</div>
+      ${actionMarkup}
     </div>
   `;
 }

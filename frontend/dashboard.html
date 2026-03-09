@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Yellow Jack – Dashboard</title>
+  <link rel="stylesheet" href="shared.css" />
   <style>
     :root {
       --primary-60: #643711;
@@ -149,6 +150,167 @@
       font-size: 0.95rem;
     }
 
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 22px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .welcome { margin-bottom: 0; }
+
+    .welcome-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(254,226,80,0.08);
+      border: 1px solid rgba(254,226,80,0.14);
+      color: var(--accent-10);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .welcome-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .hero-side {
+      background: linear-gradient(180deg, rgba(65,36,14,0.94) 0%, rgba(40,20,8,0.98) 100%);
+      border: 1px solid rgba(254,226,80,0.16);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 24px 56px rgba(14,6,2,0.42), 0 0 0 1px rgba(254,226,80,0.05);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .hero-side h3 {
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent-10);
+    }
+
+    .hero-side p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    .hero-side ul {
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .hero-side li {
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(254,226,80,0.06);
+      border: 1px solid rgba(254,226,80,0.10);
+      color: var(--text-soft);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .hero-side strong { color: var(--accent-10); }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(70,39,15,0.94) 0%, rgba(42,22,8,0.98) 100%);
+      border: 1px solid rgba(254,226,80,0.16);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 18px 42px rgba(17,8,3,0.42), 0 0 0 1px rgba(254,226,80,0.04);
+    }
+
+    .kpi-card::after {
+      content: "";
+      position: absolute;
+      top: -24px;
+      right: -18px;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, rgba(254,226,80,0.12), transparent 70%);
+    }
+
+    .kpi-card .label {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .kpi-card .value {
+      font-size: 1.55rem;
+      font-weight: 900;
+      color: var(--accent-10);
+      margin-bottom: 6px;
+    }
+
+    .kpi-card .note {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .section-head .eyebrow {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent-10);
+      font-weight: 800;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .section-head h3 {
+      font-size: 1.08rem;
+      letter-spacing: 0.05em;
+      font-weight: 800;
+    }
+
+    .section-head p {
+      color: var(--text-muted);
+      font-size: 0.86rem;
+      max-width: 48ch;
+    }
+
+    .section-head .meta {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
     .nav-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -211,6 +373,46 @@
       color: var(--text-muted);
       line-height: 1.5;
     }
+
+    .nav-card .meta {
+      margin-top: auto;
+      padding-top: 12px;
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent-10);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    @media (max-width: 900px) {
+      .hero-grid,
+      .kpi-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header {
+        padding: 16px 18px;
+        flex-direction: column;
+        align-items: start;
+        gap: 14px;
+      }
+
+      .main { padding: 24px 18px; }
+
+      .welcome,
+      .hero-side,
+      .kpi-card,
+      .nav-card { padding: 20px 18px; }
+
+      .section-head {
+        flex-direction: column;
+        align-items: start;
+      }
+    }
   </style>
 </head>
 <body>
@@ -229,9 +431,58 @@
   </header>
 
   <div class="main">
-    <div class="welcome">
-      <h2 id="welcomeMsg">Welcome back</h2>
-      <p>Select a section to get started.</p>
+    <div class="hero-grid">
+      <div class="welcome">
+        <div class="welcome-meta">Venue operations hub</div>
+        <h2 id="welcomeMsg">Welcome back</h2>
+        <p id="welcomeSubcopy">Select a section to get started.</p>
+        <div class="welcome-actions">
+          <a href="sales.html" class="button-primary" style="text-decoration:none">Open Sales</a>
+          <a href="analytics.html" class="button-secondary" style="text-decoration:none">View Analytics</a>
+        </div>
+      </div>
+
+      <aside class="hero-side">
+        <h3>Tonight's focus</h3>
+        <p>Use the dashboard as your quick launch area for sales capture, staffing oversight, and end-of-night review.</p>
+        <ul>
+          <li><strong>Sales</strong> — log deals and keep the ledger current during service.</li>
+          <li><strong>Payroll</strong> — review active shifts and weekly hours before payout checks.</li>
+          <li><strong>Roster</strong> — maintain staff visibility and role coverage from one place.</li>
+        </ul>
+      </aside>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="label">Tonight's Sales</div>
+        <div class="value" id="dashTonight"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
+        <div class="note">Live business total recorded today</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">All-Time Revenue</div>
+        <div class="value" id="dashRevenue"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
+        <div class="note">Cumulative business revenue tracked in the system</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Active Staff</div>
+        <div class="value" id="dashStaff"><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
+        <div class="note">Staff members currently contributing to recorded totals</div>
+      </div>
+      <div class="kpi-card">
+        <div class="label">Live Shifts</div>
+        <div class="value" id="dashShifts"><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
+        <div class="note">People clocked in right now</div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Quick Access</span>
+        <h3>Choose where to work next</h3>
+        <p>Jump into the part of the system you need without digging through menus.</p>
+      </div>
+      <span class="meta">Personalized by your role</span>
     </div>
 
     <div class="nav-grid">
@@ -239,31 +490,37 @@
         <span class="icon">📊</span>
         <span class="title">Analytics</span>
         <span class="desc">Sales performance, leaderboards and revenue overview.</span>
+        <span class="meta">Open insights →</span>
       </a>
       <a href="sales.html" class="nav-card">
         <span class="icon">💰</span>
         <span class="title">Sales</span>
         <span class="desc">Log new sales, view history and manage staff ledger.</span>
+        <span class="meta">Record revenue →</span>
       </a>
       <a href="roster.html" class="nav-card">
         <span class="icon">👥</span>
         <span class="title">Roster</span>
         <span class="desc">View and manage the current staff roster.</span>
+        <span class="meta">Staff overview →</span>
       </a>
       <a href="payroll.html" class="nav-card">
         <span class="icon">💳</span>
         <span class="title">Payroll</span>
         <span class="desc">Track payment history and process staff payouts.</span>
+        <span class="meta">Review timesheets →</span>
       </a>
       <a href="blacklist.html" class="nav-card">
         <span class="icon">🚫</span>
         <span class="title">Blacklist</span>
         <span class="desc">Manage banned customers and view blacklist records.</span>
+        <span class="meta">Venue safety →</span>
       </a>
       <a href="admin.html" class="nav-card">
         <span class="icon">⚙️</span>
         <span class="title">Admin</span>
         <span class="desc">User management and system settings.</span>
+        <span class="meta">Manage access →</span>
       </a>
     </div>
   </div>
@@ -271,12 +528,42 @@
   <script src="config.js"></script>
   <script src="shared.js"></script>
   <script>
+    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
 
     document.getElementById('userName').textContent = user.full_name;
     document.getElementById('userRole').textContent = user.role;
     document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.full_name}`;
+    document.getElementById('welcomeSubcopy').textContent = user.role === 'Admin'
+      ? 'Manage operations, staffing, and access control from one warm control hub.'
+      : user.role === 'Manager'
+        ? 'Keep sales, shifts, and team activity moving smoothly through the night.'
+        : 'Use your dashboard to access the sales and reporting tools relevant to your shift.';
+
+    async function loadDashboardStats() {
+      try {
+        const [summaryRes, shiftsRes] = await Promise.all([
+          apiFetch(`${API_URL}/api/analytics/summary`),
+          apiFetch(`${API_URL}/api/timesheets/active`)
+        ]);
+        const summary = await summaryRes.json();
+        const shifts = await shiftsRes.json();
+        document.getElementById('dashTonight').textContent = fmt(summary.today?.total || 0);
+        document.getElementById('dashRevenue').textContent = fmt(summary.all_time?.business || 0);
+        document.getElementById('dashStaff').textContent = summary.active_staff || 0;
+        document.getElementById('dashShifts').textContent = (shifts.active || []).length;
+      } catch (e) {
+        console.error('Failed to load dashboard stats:', e);
+        showToast('error', 'Failed to load dashboard snapshot.');
+        document.getElementById('dashTonight').textContent = '—';
+        document.getElementById('dashRevenue').textContent = '—';
+        document.getElementById('dashStaff').textContent = '—';
+        document.getElementById('dashShifts').textContent = '—';
+      }
+    }
+
+    loadDashboardStats();
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await apiFetch(`${API_URL}/auth/logout`, { method: 'POST' }).catch(() => {});

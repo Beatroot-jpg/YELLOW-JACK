@@ -61,15 +61,19 @@
       </div>
 
       <section class="cards">
-        <div class="card">
+        <div class="card card--kpi">
+          <div class="card-kicker">Live Today</div>
           <h3>Tonight's Sales</h3>
           <div class="value" id="stat-tonight"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
           <div class="note">Running total for today</div>
+          <div class="card-meta-row"><span class="card-meta-pill">Revenue feed</span></div>
         </div>
-        <div class="card">
+        <div class="card card--kpi">
+          <div class="card-kicker">Operations</div>
           <h3>Active Staff</h3>
           <div class="value" id="stat-staff"><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
           <div class="note">Staff with earnings on the ledger</div>
+          <div class="card-meta-row"><span class="card-meta-pill">Live participation</span></div>
         </div>
       </section>
 
@@ -146,17 +150,20 @@
 
       <!-- Totals row: all-time business metrics -->
       <section class="analytics-row analytics-row--totals">
-        <div class="card totals-grid-card">
+        <div class="card card--kpi totals-grid-card">
+          <div class="card-kicker">History</div>
           <h3>Total Sales</h3>
           <div class="value" id="stat-total-count"><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
           <div class="note">All recorded sales entries</div>
         </div>
-        <div class="card totals-grid-card">
+        <div class="card card--kpi totals-grid-card">
+          <div class="card-kicker">Business</div>
           <h3>Total Revenue (All Time)</h3>
           <div class="value" id="stat-total-revenue"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
           <div class="note">Cumulative business revenue (90% of all sales)</div>
         </div>
-        <div class="card totals-grid-card">
+        <div class="card card--kpi totals-grid-card">
+          <div class="card-kicker">Commission</div>
           <h3>Total Staff Earnings</h3>
           <div class="value" id="stat-total-earnt"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
           <div class="note">Cumulative 10% commissions earned by all staff</div>
@@ -186,7 +193,7 @@
         const buildList = (id, entries) => {
           const ul = document.getElementById(id);
           if (!entries || !entries.length) {
-            ul.innerHTML = createEmptyState({ icon: '◌', title: 'No leaderboard data', description: 'Record sales to populate this leaderboard.' });
+            ul.innerHTML = createEmptyState({ icon: '◌', title: 'No leaderboard data', description: 'Record sales to populate this leaderboard.', actionLabel: 'Log first sale', actionHref: 'sales.html' });
             return;
           }
           ul.innerHTML = entries.map((e, i) => `
@@ -202,8 +209,8 @@
       } catch (e) {
         console.error('Failed to load analytics:', e);
         showToast('error', 'Failed to load analytics data. Please try again.');
-        document.getElementById('leaderboard-weekly').innerHTML = createEmptyState({ icon: '!', title: 'Analytics unavailable', description: 'We could not load leaderboard data right now.' });
-        document.getElementById('leaderboard-monthly').innerHTML = createEmptyState({ icon: '!', title: 'Analytics unavailable', description: 'We could not load leaderboard data right now.' });
+        document.getElementById('leaderboard-weekly').innerHTML = createEmptyState({ icon: '!', title: 'Analytics unavailable', description: 'We could not load leaderboard data right now.', actionLabel: 'Open Sales', actionHref: 'sales.html' });
+        document.getElementById('leaderboard-monthly').innerHTML = createEmptyState({ icon: '!', title: 'Analytics unavailable', description: 'We could not load leaderboard data right now.', actionLabel: 'Open Sales', actionHref: 'sales.html' });
       }
     }
 
