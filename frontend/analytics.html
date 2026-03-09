@@ -74,12 +74,12 @@
       <section class="cards">
         <div class="card">
           <h3>Tonight's Sales</h3>
-          <div class="value" id="stat-tonight">—</div>
+          <div class="value" id="stat-tonight"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
           <div class="note">Running total for today</div>
         </div>
         <div class="card">
           <h3>Active Staff</h3>
-          <div class="value" id="stat-staff">—</div>
+          <div class="value" id="stat-staff"><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
           <div class="note">Staff with earnings on the ledger</div>
         </div>
       </section>
@@ -111,7 +111,9 @@
             <span class="panel-subtitle">Top sellers this week – placeholder data</span>
           </div>
           <ul class="leaderboard-list" id="leaderboard-weekly">
-            <li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">Loading...</span></li>
+            <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
+            <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
+            <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
           </ul>
         </div>
 
@@ -121,7 +123,9 @@
             <span class="panel-subtitle">Top earners all time</span>
           </div>
           <ul class="leaderboard-list" id="leaderboard-monthly">
-            <li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">Loading...</span></li>
+            <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
+            <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
+            <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
           </ul>
         </div>
       </section>
@@ -135,17 +139,17 @@
       <section class="analytics-row analytics-row--totals">
         <div class="card totals-grid-card">
           <h3>Total Sales</h3>
-          <div class="value" id="stat-total-count">—</div>
+          <div class="value" id="stat-total-count"><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
           <div class="note">All recorded sales entries</div>
         </div>
         <div class="card totals-grid-card">
           <h3>Total Revenue (All Time)</h3>
-          <div class="value" id="stat-total-revenue">—</div>
+          <div class="value" id="stat-total-revenue"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
           <div class="note">Cumulative business revenue (90% of all sales)</div>
         </div>
         <div class="card totals-grid-card">
           <h3>Total Staff Earnings</h3>
-          <div class="value" id="stat-total-earnt">—</div>
+          <div class="value" id="stat-total-earnt"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
           <div class="note">Cumulative 10% commissions earned by all staff</div>
         </div>
       </section>
@@ -173,7 +177,7 @@
         const buildList = (id, entries) => {
           const ul = document.getElementById(id);
           if (!entries || !entries.length) {
-            ul.innerHTML = '<li class="leaderboard-item"><span class="leaderboard-name" style="color:var(--text-muted)">No data yet</span></li>';
+            ul.innerHTML = createEmptyState({ icon: '◌', title: 'No leaderboard data', description: 'Record sales to populate this leaderboard.' });
             return;
           }
           ul.innerHTML = entries.map((e, i) => `
@@ -186,7 +190,12 @@
 
         buildList('leaderboard-weekly', data.top_earners);
         buildList('leaderboard-monthly', [...(data.top_earners || [])].reverse());
-      } catch (e) { console.error('Failed to load analytics:', e); }
+      } catch (e) {
+        console.error('Failed to load analytics:', e);
+        showToast('error', 'Failed to load analytics data. Please try again.');
+        document.getElementById('leaderboard-weekly').innerHTML = createEmptyState({ icon: '!', title: 'Analytics unavailable', description: 'We could not load leaderboard data right now.' });
+        document.getElementById('leaderboard-monthly').innerHTML = createEmptyState({ icon: '!', title: 'Analytics unavailable', description: 'We could not load leaderboard data right now.' });
+      }
     }
 
     loadStats();

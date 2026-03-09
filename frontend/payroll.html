@@ -47,9 +47,9 @@
 
       <!-- Summary stats -->
       <div class="summary-bar" id="summaryBar">
-        <div class="summary-stat"><div class="label">Staff This Week</div><div class="val" id="stat-staff">—</div></div>
-        <div class="summary-stat"><div class="label">Total Hours</div><div class="val" id="stat-hours">—</div></div>
-        <div class="summary-stat"><div class="label">Total Shifts</div><div class="val" id="stat-shifts">—</div></div>
+        <div class="summary-stat"><div class="label">Staff This Week</div><div class="val" id="stat-staff"><div class="skeleton skeleton-line skeleton-line--sm"></div></div></div>
+        <div class="summary-stat"><div class="label">Total Hours</div><div class="val" id="stat-hours"><div class="skeleton skeleton-line skeleton-line--md"></div></div></div>
+        <div class="summary-stat"><div class="label">Total Shifts</div><div class="val" id="stat-shifts"><div class="skeleton skeleton-line skeleton-line--sm"></div></div></div>
       </div>
 
       <!-- Weekly hours table -->
@@ -75,7 +75,8 @@
               </tr>
             </thead>
             <tbody id="weeklyTableBody">
-              <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
+              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -99,7 +100,8 @@
               </tr>
             </thead>
             <tbody id="shiftLogBody">
-              <tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
+              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -137,6 +139,7 @@
 
     async function loadWeekly(weekStart = '') {
       try {
+        document.getElementById('weeklyTableBody').innerHTML = createTableSkeleton(5, 4);
         const url = weekStart
           ? `${API_URL}/api/timesheets/weekly?week_start=${weekStart}`
           : `${API_URL}/api/timesheets/weekly`;
@@ -167,7 +170,7 @@
         // Populate table
         const tbody = document.getElementById('weeklyTableBody');
         if (!summary.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">No timesheet data for this week</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◫', title: 'No timesheet data', description: 'Clocked shifts for this week will appear here.' })}</td></tr>`;
           return;
         }
         tbody.innerHTML = summary.map(r => `
@@ -178,11 +181,16 @@
             <td class="small">${r.total_minutes} min</td>
             <td class="small">${r.week_start ? new Date(r.week_start).toLocaleDateString() : '—'}</td>
           </tr>`).join('');
-      } catch (e) { console.error('Failed to load weekly summary:', e); }
+      } catch (e) {
+        console.error('Failed to load weekly summary:', e);
+        document.getElementById('weeklyTableBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load weekly hours', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load weekly payroll summary.');
+      }
     }
 
     async function loadShiftLog(page = 1) {
       try {
+        document.getElementById('shiftLogBody').innerHTML = createTableSkeleton(5, 5);
         const res = await apiFetch(`${API_URL}/api/timesheets?page=${page}&limit=15`);
         const data = await res.json();
         const shifts = data.timesheets || [];
@@ -191,7 +199,7 @@
 
         const tbody = document.getElementById('shiftLogBody');
         if (!shifts.length) {
-          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-muted);text-align:center;padding:20px">No shift records yet</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◷', title: 'No shift records yet', description: 'Clock in and out on the sales page to build your payroll log.' })}</td></tr>`;
         } else {
           tbody.innerHTML = shifts.map(s => {
             const dur = s.duration_minutes !== null ? fmtDuration(s.duration_minutes) : '<span style="color:var(--accent-10);font-size:0.8rem">⏱ Active</span>';
@@ -207,7 +215,11 @@
         document.getElementById('logPageStatus').textContent = `Page ${logPage} of ${logTotalPages}`;
         document.getElementById('logPrevBtn').disabled = logPage <= 1;
         document.getElementById('logNextBtn').disabled = logPage >= logTotalPages;
-      } catch (e) { console.error('Failed to load shift log:', e); }
+      } catch (e) {
+        console.error('Failed to load shift log:', e);
+        document.getElementById('shiftLogBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load shift log', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load shift log.');
+      }
     }
 
     document.getElementById('weekPicker').addEventListener('change', (e) => loadWeekly(e.target.value));

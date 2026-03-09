@@ -123,7 +123,8 @@
                 </tr>
               </thead>
               <tbody id="salesTableBody">
-                <tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -153,7 +154,8 @@
                 </tr>
               </thead>
               <tbody id="ledgerTableBody">
-                <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">Loading...</td></tr>
+                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -189,7 +191,8 @@
             <span class="panel-subtitle" id="activeCount">Loading...</span>
           </div>
           <div id="activeShifts" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <span style="color:var(--text-muted);font-size:0.85rem">Loading...</span>
+            <div class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
+            <div class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div>
           </div>
         </div>
       </section>
@@ -218,6 +221,7 @@
 
     async function loadSales(page = 1) {
       try {
+        document.getElementById('salesTableBody').innerHTML = createTableSkeleton(7, 4);
         const res = await apiFetch(`${API_URL}/api/sales?page=${page}&limit=10`);
         const data = await res.json();
         const sales = data.sales || [];
@@ -232,7 +236,7 @@
 
         const tbody = document.getElementById('salesTableBody');
         if (!sales.length) {
-          tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:20px">No sales yet</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '⟡', title: 'No sales recorded yet', description: 'Log your first sale to start tracking revenue and commission.' })}</td></tr>`;
         } else {
           tbody.innerHTML = sales.map(s => {
             const dt = new Date(s.created_at);
@@ -253,11 +257,16 @@
         document.getElementById('nextBtn').disabled = currentPage >= totalPages;
         document.getElementById('tableMeta').textContent =
           `Showing page ${currentPage} of ${totalPages} · ${data.pagination?.total ?? 0} total sales`;
-      } catch (e) { console.error('Failed to load sales:', e); }
+      } catch (e) {
+        console.error('Failed to load sales:', e);
+        document.getElementById('salesTableBody').innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '!', title: 'Unable to load sales', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load sales history.');
+      }
     }
 
     async function loadLedger() {
       try {
+        document.getElementById('ledgerTableBody').innerHTML = createTableSkeleton(4, 4);
         const res = await apiFetch(`${API_URL}/api/ledger`);
         const data = await res.json();
         const ledger = data.ledger || [];
@@ -268,7 +277,7 @@
         const tbody = document.getElementById('ledgerTableBody');
         const canPay = ['Manager', 'Admin'].includes(currentUser?.role);
         if (!ledger.length) {
-          tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px">No ledger entries yet</td></tr>';
+          tbody.innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Staff earnings will appear here once sales are logged.' })}</td></tr>`;
         } else {
           tbody.innerHTML = ledger.map(e => `
             <tr>
@@ -278,7 +287,11 @@
               <td>${canPay ? `<button class="button-secondary" onclick="payStaff('${e.employee_name}', ${e.total_money_earnt})">Pay ${fmt(e.total_money_earnt)}</button>` : '—'}</td>
             </tr>`).join('');
         }
-      } catch (e) { console.error('Failed to load ledger:', e); }
+      } catch (e) {
+        console.error('Failed to load ledger:', e);
+        document.getElementById('ledgerTableBody').innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '!', title: 'Unable to load ledger', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load staff ledger.');
+      }
     }
 
     async function payStaff(name, amount) {
@@ -289,8 +302,15 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ employee_name: name, amount })
         });
-        if (res.ok) { loadLedger(); } else { alert('Payment failed.'); }
-      } catch { alert('Connection error.'); }
+        if (res.ok) {
+          showToast('success', `Paid ${fmt(amount)} to ${name}.`);
+          loadLedger();
+        } else {
+          showToast('error', 'Payment failed.');
+        }
+      } catch {
+        showToast('error', 'Connection error while processing payment.');
+      }
     }
 
     document.getElementById('saleForm').addEventListener('submit', async (e) => {
@@ -309,12 +329,15 @@
         });
         if (res.ok) {
           e.target.reset();
+          showToast('success', 'Sale saved successfully.');
           await Promise.all([loadSales(1), loadLedger()]);
         } else {
           const err = await res.json();
-          alert(err.error || 'Failed to save sale.');
+          showToast('error', err.error || 'Failed to save sale.');
         }
-      } catch { alert('Connection error.'); }
+      } catch {
+        showToast('error', 'Connection error while saving sale.');
+      }
       btn.disabled = false; btn.textContent = 'Save Sale';
     });
 
@@ -334,6 +357,8 @@
 
     async function loadActiveShifts() {
       try {
+        document.getElementById('activeCount').textContent = 'Loading...';
+        document.getElementById('activeShifts').innerHTML = createActiveShiftSkeleton(3);
         const res = await apiFetch(`${API_URL}/api/timesheets/active`);
         const data = await res.json();
         const active = data.active || [];
@@ -343,7 +368,7 @@
 
         const container = document.getElementById('activeShifts');
         if (!active.length) {
-          container.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem">No active shifts</span>';
+          container.innerHTML = createEmptyState({ icon: '◷', title: 'No active shifts', description: 'Nobody is currently clocked in.' });
           Object.values(activeTimers).forEach(clearInterval);
           activeTimers = {};
           return;
@@ -372,7 +397,12 @@
 
         // Update clock button based on selected employee
         updateClockBtn();
-      } catch (e) { console.error('Failed to load active shifts:', e); }
+      } catch (e) {
+        console.error('Failed to load active shifts:', e);
+        document.getElementById('activeCount').textContent = 'Unavailable';
+        document.getElementById('activeShifts').innerHTML = createEmptyState({ icon: '!', title: 'Shift status unavailable', description: 'We could not load active shift data.' });
+        showToast('error', 'Failed to load active shift data.');
+      }
     }
 
     function showClockMsg(text, success = true) {
@@ -418,12 +448,17 @@
         const data = await res.json();
         if (res.ok) {
           showClockMsg(data.message, true);
+          showToast('success', data.message);
           document.getElementById('clock-employee').value = '';
           await loadActiveShifts();
         } else {
           showClockMsg(data.error || 'Failed', false);
+          showToast('error', data.error || 'Failed to update clock status.');
         }
-      } catch { showClockMsg('Connection error', false); }
+      } catch {
+        showClockMsg('Connection error', false);
+        showToast('error', 'Connection error while updating clock status.');
+      }
 
       btn.disabled = false;
     });
