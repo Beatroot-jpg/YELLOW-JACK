@@ -6,17 +6,7 @@
   <title>Yellow Jack – Roster</title>
   <link rel="stylesheet" href="shared.css" />
   <style>
-    .status-badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; }
-    .status-active { background:rgba(100,200,100,0.15); color:#6fcf97; border:1px solid rgba(100,200,100,0.3); }
-    .status-inactive { background:rgba(255,100,100,0.1); color:#ff6464; border:1px solid rgba(255,100,100,0.3); }
     .action-row { display:flex; gap:6px; }
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
-    .modal-overlay.open { display:flex; }
-    .modal { background:var(--secondary-30); border:1px solid var(--border-subtle); border-radius:12px; padding:28px; width:100%; max-width:420px; display:flex; flex-direction:column; gap:16px; }
-    .modal h3 { font-size:1rem; text-transform:uppercase; letter-spacing:0.14em; color:var(--accent-10); }
-    .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
-    .btn-cancel { padding:8px 16px; background:transparent; border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-muted); cursor:pointer; font-size:0.85rem; }
-    .btn-cancel:hover { border-color:var(--accent-10); color:var(--accent-10); }
   </style>
 </head>
 <body>
@@ -27,13 +17,13 @@
         <h1>Yellow Jack</h1>
       </div>
       <nav class="nav">
-        <a href="dashboard.html" class="nav-link">Dashboard</a>
-        <a href="analytics.html" class="nav-link">Analytics</a>
-        <a href="sales.html" class="nav-link">Sales</a>
-        <a href="payroll.html" class="nav-link">Payroll</a>
-        <a href="roster.html" class="nav-link active">Roster</a>
-        <a href="blacklist.html" class="nav-link">Blacklist</a>
-        <a href="admin.html" class="nav-link">Admin</a>
+        <a href="dashboard.html" class="nav-link" data-icon="⌂">Dashboard</a>
+        <a href="analytics.html" class="nav-link" data-icon="◔">Analytics</a>
+        <a href="sales.html" class="nav-link" data-icon="⟡">Sales</a>
+        <a href="payroll.html" class="nav-link" data-icon="◫">Payroll</a>
+        <a href="roster.html" class="nav-link active" data-icon="◎">Roster</a>
+        <a href="blacklist.html" class="nav-link" data-icon="⛔">Blacklist</a>
+        <a href="admin.html" class="nav-link" data-icon="⚙">Admin</a>
       </nav>
     </aside>
 
@@ -63,7 +53,7 @@
           </div>
           <button class="button-primary" id="addBtn">Add</button>
         </div>
-        <div id="addMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:0.88rem;"></div>
+        <div id="addMsg" class="ui-message"></div>
       </div>
 
       <!-- Roster Table -->
@@ -139,7 +129,7 @@
         }
         tbody.innerHTML = roster.map(m => {
           const status = m.status || 'Active';
-          const cls = status === 'Active' ? 'status-active' : 'status-inactive';
+          const cls = status === 'Active' ? 'status-badge--success' : 'status-badge--danger';
           const joined = m.date_joined ? new Date(m.date_joined).toLocaleDateString() : '—';
           const actions = canEdit ? `
             <div class="action-row">
@@ -159,10 +149,9 @@
 
     function showMsg(id, text, ok) {
       const el = document.getElementById(id);
-      el.textContent = text; el.style.display = 'block';
-      el.style.background = ok ? 'rgba(100,200,100,0.1)' : 'rgba(255,100,100,0.1)';
-      el.style.border = ok ? '1px solid rgba(100,200,100,0.3)' : '1px solid rgba(255,100,100,0.3)';
-      el.style.color = ok ? '#6fcf97' : '#ff6464';
+      el.textContent = text;
+      el.className = `ui-message ${ok ? 'ui-message--success' : 'ui-message--error'}`;
+      el.style.display = 'block';
       setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
 

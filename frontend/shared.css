@@ -138,6 +138,18 @@ body {
   transition: background 0.18s, color 0.18s, transform 0.08s, border-color 0.18s, box-shadow 0.18s;
 }
 
+.nav-link::before {
+  content: attr(data-icon);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  margin-right: 0.7rem;
+  color: rgba(254, 226, 80, 0.88);
+  font-size: 0.94rem;
+  opacity: 0.92;
+}
+
 .nav-link:hover {
   background: linear-gradient(90deg, rgba(254,226,80,0.12), rgba(254,226,80,0.04));
   border-color: rgba(254,226,80,0.12);
@@ -150,6 +162,11 @@ body {
   color: var(--accent-10);
   border: 1px solid rgba(254,226,80,0.34);
   box-shadow: 0 10px 22px rgba(0,0,0,0.18), 0 0 18px rgba(254,226,80,0.08);
+}
+
+.nav-link.active::before,
+.nav-link:hover::before {
+  color: var(--accent-10);
 }
 
 
@@ -273,6 +290,123 @@ header span { font-size: 0.78rem; color: var(--text-muted); text-transform: uppe
   transition: all 0.18s;
 }
 .button-secondary:hover { background: rgba(254,226,80,0.10); border-color: rgba(254,226,80,0.38); }
+
+/* Reusable feedback + utility UI */
+.ui-message {
+  display: none;
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.ui-message--success {
+  background: rgba(111, 207, 151, 0.12);
+  border-color: rgba(111, 207, 151, 0.26);
+  color: #7cdda5;
+}
+
+.ui-message--error {
+  background: rgba(255, 100, 100, 0.12);
+  border-color: rgba(255, 100, 100, 0.24);
+  color: #ff8585;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid transparent;
+}
+
+.status-badge--success {
+  background: rgba(111, 207, 151, 0.14);
+  border-color: rgba(111, 207, 151, 0.26);
+  color: #7cdda5;
+}
+
+.status-badge--danger {
+  background: rgba(255, 100, 100, 0.12);
+  border-color: rgba(255, 100, 100, 0.24);
+  color: #ff8585;
+}
+
+.status-badge--warning {
+  background: rgba(254, 226, 80, 0.12);
+  border-color: rgba(254, 226, 80, 0.22);
+  color: var(--accent-10);
+}
+
+/* Modal system */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(254, 226, 80, 0.09), transparent 32%),
+    rgba(10, 5, 2, 0.78);
+  backdrop-filter: blur(10px);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(67, 37, 14, 0.98) 0%, rgba(37, 18, 7, 0.99) 100%);
+  border: 1px solid rgba(254, 226, 80, 0.2);
+  box-shadow: 0 34px 60px rgba(0,0,0,0.5), 0 0 24px rgba(254,226,80,0.08);
+}
+
+.modal h3 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-10);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.btn-cancel {
+  padding: 9px 16px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: all 0.18s;
+}
+
+.btn-cancel:hover {
+  border-color: var(--accent-10);
+  color: var(--accent-10);
+  background: rgba(254,226,80,0.08);
+}
 
 /* Forms */
 .sale-form { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: end; }

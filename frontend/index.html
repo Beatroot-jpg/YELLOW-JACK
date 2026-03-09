@@ -32,27 +32,66 @@
       align-items: center;
       justify-content: center;
       background:
-        radial-gradient(circle at top left, rgba(254, 226, 80, 0.08), transparent 55%),
-        radial-gradient(circle at bottom right, rgba(254, 226, 80, 0.05), transparent 55%),
-        var(--primary-60);
+        radial-gradient(circle at top left, rgba(254, 226, 80, 0.14), transparent 32%),
+        radial-gradient(circle at 80% 12%, rgba(255, 245, 178, 0.08), transparent 24%),
+        radial-gradient(circle at bottom right, rgba(254, 226, 80, 0.08), transparent 36%),
+        linear-gradient(180deg, #72401a 0%, #603411 36%, #4d2a10 100%);
+      padding: 28px;
     }
 
     .login-container {
       width: 100%;
-      max-width: 420px;
-      padding: 20px;
+      max-width: 1040px;
+    }
+
+    .login-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(360px, 440px);
+      gap: 26px;
+      align-items: stretch;
+    }
+
+    .brand-panel,
+    .login-card {
+      background: linear-gradient(180deg, rgba(68, 38, 15, 0.94) 0%, rgba(41, 21, 8, 0.98) 100%);
+      border: 1px solid rgba(254, 226, 80, 0.18);
+      border-radius: 22px;
+      box-shadow: 0 30px 60px rgba(17, 8, 3, 0.45), 0 0 0 1px rgba(254, 226, 80, 0.04);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .brand-panel::before,
+    .login-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(254, 226, 80, 0.4), transparent);
+    }
+
+    .brand-panel {
+      padding: 38px 34px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 22px;
     }
 
     .logo-section {
-      text-align: center;
-      margin-bottom: 40px;
+      text-align: left;
+      position: relative;
     }
 
     .logo-section img {
-      width: 240px;
-      height: 240px;
-      margin-bottom: 20px;
-      filter: brightness(0.95);
+      width: 220px;
+      height: 220px;
+      margin-bottom: 18px;
+      filter: brightness(0.98);
+      border-radius: 18px;
+      border: 1px solid rgba(254, 226, 80, 0.3);
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35), 0 0 28px rgba(254, 226, 80, 0.16);
     }
 
     .logo-section h1 {
@@ -67,25 +106,75 @@
 
     .logo-section p {
       color: var(--text-muted);
-      font-size: 0.95rem;
+      font-size: 1rem;
       letter-spacing: 1px;
+      max-width: 34ch;
+      line-height: 1.6;
     }
 
     .login-card {
-      background: var(--secondary-30);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 40px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      padding: 38px 34px 32px;
+      align-self: center;
+    }
+
+    .intro-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(254, 226, 80, 0.10);
+      border: 1px solid rgba(254, 226, 80, 0.18);
+      color: var(--accent-10);
+      font-size: 0.74rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      width: fit-content;
+      margin-bottom: 16px;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .feature-list li {
+      padding: 14px 14px;
+      border-radius: 14px;
+      background: rgba(254, 226, 80, 0.06);
+      border: 1px solid rgba(254, 226, 80, 0.10);
+      color: var(--text-soft, #e9dcc8);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .feature-list strong {
+      display: block;
+      color: var(--accent-10);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 6px;
     }
 
     .login-card h2 {
       font-size: 1.5rem;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 24px;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
       color: var(--accent-10);
+    }
+
+    .login-card p.helper {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      margin-bottom: 24px;
+      line-height: 1.55;
     }
 
     .form-group {
@@ -104,10 +193,10 @@
 
     .form-group input {
       width: 100%;
-      padding: 12px 16px;
-      background: var(--primary-60);
+      padding: 13px 16px;
+      background: linear-gradient(180deg, rgba(111, 65, 27, 0.56), rgba(66, 36, 15, 0.88));
       border: 1px solid var(--border-subtle);
-      border-radius: 6px;
+      border-radius: 10px;
       color: var(--text-main);
       font-size: 1rem;
       transition: all 0.2s;
@@ -116,30 +205,31 @@
     .form-group input:focus {
       outline: none;
       border-color: var(--accent-10);
-      background: rgba(100, 55, 17, 0.8);
-      box-shadow: 0 0 0 2px rgba(254, 226, 80, 0.1);
+      background: rgba(100, 55, 17, 0.9);
+      box-shadow: 0 0 0 3px rgba(254, 226, 80, 0.1), 0 12px 24px rgba(0, 0, 0, 0.16);
     }
 
     .login-btn {
       width: 100%;
-      padding: 14px;
-      background: var(--accent-10);
+      padding: 15px;
+      background: linear-gradient(180deg, #fee86d 0%, #fee250 100%);
       color: var(--secondary-30);
       border: none;
-      border-radius: 6px;
+      border-radius: 10px;
       font-size: 1rem;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 1px;
       cursor: pointer;
       transition: all 0.2s;
       margin-top: 8px;
+      box-shadow: 0 12px 26px rgba(254, 226, 80, 0.16);
     }
 
     .login-btn:hover {
       background: #ffeb70;
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(254, 226, 80, 0.4);
+      box-shadow: 0 18px 28px rgba(254, 226, 80, 0.22);
     }
 
     .login-btn:active {
@@ -151,23 +241,74 @@
       border: 1px solid rgba(255, 100, 100, 0.3);
       color: #ff6464;
       padding: 12px;
-      border-radius: 6px;
+      border-radius: 10px;
       margin-bottom: 20px;
       font-size: 0.9rem;
       display: none;
+    }
+
+    @media (max-width: 900px) {
+      .login-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-panel {
+        padding: 28px 24px;
+      }
+
+      .login-card {
+        max-width: 100%;
+      }
+
+      .feature-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px;
+      }
+
+      .brand-panel,
+      .login-card {
+        padding: 24px 20px;
+        border-radius: 18px;
+      }
+
+      .logo-section img {
+        width: 180px;
+        height: 180px;
+      }
+
+      .logo-section h1 {
+        font-size: 2.1rem;
+      }
     }
   </style>
 </head>
 <body>
   <div class="login-container">
-    <div class="logo-section">
-      <img src="Main Logo.png" alt="Yellow Jack Logo" />
-      <h1>Yellow Jack</h1>
-      <p>Bar Tracker System</p>
-    </div>
+    <div class="login-shell">
+      <section class="brand-panel">
+        <div class="logo-section">
+          <div class="intro-kicker">Secure staff portal</div>
+          <img src="Main Logo.png" alt="Yellow Jack Logo" />
+          <h1>Yellow Jack</h1>
+          <p>Welcome to the operations dashboard for sales, staffing, payroll, and venue oversight.</p>
+        </div>
 
-    <div class="login-card">
+        <ul class="feature-list">
+          <li><strong>Live Operations</strong>Track sales activity, staff shifts, and core venue metrics in one place.</li>
+          <li><strong>Role-Based Access</strong>Owner, manager, and staff access can be controlled as the system grows.</li>
+          <li><strong>Weekly Oversight</strong>Review timesheets, earnings, and team performance with clearer reporting.</li>
+          <li><strong>Hospitality Focus</strong>Built around a warmer, premium workspace for everyday venue use.</li>
+        </ul>
+      </section>
+
+      <div class="login-card">
       <h2>Login</h2>
+      <p class="helper">Sign in to access the Yellow Jack dashboard and your operational tools.</p>
 
       <div class="error-message" id="errorMessage"></div>
 
@@ -184,6 +325,7 @@
 
         <button type="submit" class="login-btn">Login</button>
       </form>
+      </div>
     </div>
   </div>
 

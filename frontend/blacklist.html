@@ -25,13 +25,13 @@
         <h1>Yellow Jack</h1>
       </div>
       <nav class="nav">
-        <a href="dashboard.html" class="nav-link">Dashboard</a>
-        <a href="analytics.html" class="nav-link">Analytics</a>
-        <a href="sales.html" class="nav-link">Sales</a>
-        <a href="payroll.html" class="nav-link">Payroll</a>
-        <a href="roster.html" class="nav-link">Roster</a>
-        <a href="blacklist.html" class="nav-link active">Blacklist</a>
-        <a href="admin.html" class="nav-link">Admin</a>
+        <a href="dashboard.html" class="nav-link" data-icon="⌂">Dashboard</a>
+        <a href="analytics.html" class="nav-link" data-icon="◔">Analytics</a>
+        <a href="sales.html" class="nav-link" data-icon="⟡">Sales</a>
+        <a href="payroll.html" class="nav-link" data-icon="◫">Payroll</a>
+        <a href="roster.html" class="nav-link" data-icon="◎">Roster</a>
+        <a href="blacklist.html" class="nav-link active" data-icon="⛔">Blacklist</a>
+        <a href="admin.html" class="nav-link" data-icon="⚙">Admin</a>
       </nav>
     </aside>
 
@@ -57,7 +57,7 @@
           </div>
           <button class="button-primary" id="addBtn">Add</button>
         </div>
-        <div id="addMsg" style="display:none;margin-top:10px;padding:10px;border-radius:6px;font-size:0.88rem;"></div>
+        <div id="addMsg" class="ui-message"></div>
       </div>
 
       <!-- Search + List -->
@@ -127,10 +127,9 @@
 
     function showMsg(text, ok) {
       const el = document.getElementById('addMsg');
-      el.textContent = text; el.style.display = 'block';
-      el.style.background = ok ? 'rgba(100,200,100,0.1)' : 'rgba(255,100,100,0.1)';
-      el.style.border = ok ? '1px solid rgba(100,200,100,0.3)' : '1px solid rgba(255,100,100,0.3)';
-      el.style.color = ok ? '#6fcf97' : '#ff6464';
+      el.textContent = text;
+      el.className = `ui-message ${ok ? 'ui-message--success' : 'ui-message--error'}`;
+      el.style.display = 'block';
       setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
 
