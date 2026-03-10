@@ -12,6 +12,8 @@
     .summary-stat { background:linear-gradient(180deg, rgba(70,39,15,0.94) 0%, rgba(42,22,8,0.98) 100%); border:1px solid rgba(254,226,80,0.14); border-radius:14px; padding:14px 18px; box-shadow:var(--shadow-card); min-width:180px; }
     .summary-stat .label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em; color:var(--text-muted); margin-bottom:4px; }
     .summary-stat .val { font-size:1.3rem; font-weight:700; color:var(--accent-10); }
+    .payroll-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .payroll-note { margin-top:8px; font-size:0.8rem; color:var(--text-muted); }
   </style>
 </head>
 <body>
@@ -55,7 +57,68 @@
         <div class="summary-stat"><div class="label">Staff This Week</div><div class="val" id="stat-staff"><div class="skeleton skeleton-line skeleton-line--sm"></div></div></div>
         <div class="summary-stat"><div class="label">Total Hours</div><div class="val" id="stat-hours"><div class="skeleton skeleton-line skeleton-line--md"></div></div></div>
         <div class="summary-stat"><div class="label">Total Shifts</div><div class="val" id="stat-shifts"><div class="skeleton skeleton-line skeleton-line--sm"></div></div></div>
+        <div class="summary-stat"><div class="label">Outstanding Owed</div><div class="val" id="outstandingOwed"><div class="skeleton skeleton-line skeleton-line--md"></div></div></div>
       </div>
+
+      <div class="section-intro">
+        <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Payroll Ledger</span>
+          <h3 class="section-intro__title">Amounts owed and payout actions</h3>
+          <p class="section-intro__desc">Payroll now owns commission balances and payout processing. Sales stays focused on logging sales and shift time.</p>
+        </div>
+        <span class="section-intro__meta">Managers, Admins, and Owners can process payouts</span>
+      </div>
+
+      <section class="analytics-row analytics-row--boards">
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">Commission Ledger</h3>
+            <span class="panel-subtitle">Outstanding 10% staff share from logged sales</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table data-table--ledger">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Deals</th>
+                  <th>Outstanding</th>
+                  <th>Last Payment</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ledgerTableBody">
+                <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-meta"><span id="ledgerMeta">Loading payroll ledger...</span></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">Recent Payments</h3>
+            <span class="panel-subtitle">Latest payouts recorded through payroll</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table data-table--ledger">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Amount</th>
+                  <th>Paid By</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTableBody">
+                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
+                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="payroll-note">This is the dedicated place for payroll payouts and commission balances.</div>
+        </div>
+      </section>
 
       <!-- Weekly hours table -->
       <div class="panel">
@@ -141,6 +204,7 @@
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
     document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
+    const canManagePayroll = ['Manager', 'Admin', 'Owner'].includes(user.role);
 
     let logPage = 1;
     let logTotalPages = 1;
@@ -156,6 +220,96 @@
       if (!iso) return '—';
       const d = new Date(iso);
       return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadLedger() {
+      try {
+        document.getElementById('ledgerTableBody').innerHTML = createTableSkeleton(5, 4);
+        const res = await apiFetch(`${API_URL}/api/ledger`);
+        const data = await res.json();
+        const ledger = data.ledger || [];
+        const tbody = document.getElementById('ledgerTableBody');
+        const totalOutstanding = ledger.reduce((sum, item) => sum + Number(item.total_money_earnt || 0), 0);
+        document.getElementById('outstandingOwed').textContent = fmtCurrency(totalOutstanding);
+        document.getElementById('ledgerMeta').textContent = ledger.length ? `${ledger.length} staff member${ledger.length === 1 ? '' : 's'} currently owed commission` : 'No outstanding commission entries';
+
+        if (!ledger.length) {
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Outstanding commission will appear here once sales are logged.', actionLabel: 'Open Sales', actionHref: 'sales.html' })}</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = ledger.map(entry => `
+          <tr>
+            <td>${entry.employee_name}</td>
+            <td class="small">${entry.deals_count} deals</td>
+            <td class="amount">${fmtCurrency(entry.total_money_earnt)}</td>
+            <td class="small">${entry.last_payment_date ? new Date(entry.last_payment_date).toLocaleDateString() : 'Never'}</td>
+            <td>${canManagePayroll ? `<div class="payroll-actions"><button type="button" class="button-secondary pay-ledger-btn" data-name="${encodeURIComponent(entry.employee_name)}" data-amount="${entry.total_money_earnt}">Pay ${fmtCurrency(entry.total_money_earnt)}</button></div>` : '<span class="small" style="color:var(--text-muted)">View only</span>'}</td>
+          </tr>`).join('');
+
+        document.querySelectorAll('.pay-ledger-btn').forEach(btn => {
+          btn.addEventListener('click', () => payStaff(decodeURIComponent(btn.dataset.name), Number(btn.dataset.amount)));
+        });
+      } catch (e) {
+        console.error('Failed to load ledger:', e);
+        document.getElementById('ledgerTableBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load ledger', description: 'Please refresh and try again.' })}</td></tr>`;
+        document.getElementById('ledgerMeta').textContent = 'Unable to load payroll ledger.';
+        document.getElementById('outstandingOwed').textContent = '—';
+        showToast('error', 'Failed to load payroll ledger.');
+      }
+    }
+
+    async function loadPayments() {
+      try {
+        document.getElementById('paymentsTableBody').innerHTML = createTableSkeleton(4, 4);
+        const res = await apiFetch(`${API_URL}/api/payments`);
+        const data = await res.json();
+        const payments = data.payments || [];
+        const tbody = document.getElementById('paymentsTableBody');
+        if (!payments.length) {
+          tbody.innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '◌', title: 'No payments recorded yet', description: 'Processed payouts will show up here.' })}</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = payments.map(payment => `
+          <tr>
+            <td>${payment.employee_name}</td>
+            <td class="amount">${fmtCurrency(payment.amount_paid)}</td>
+            <td>${payment.paid_by || '—'}</td>
+            <td class="small">${payment.paid_at ? new Date(payment.paid_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
+          </tr>`).join('');
+      } catch (e) {
+        console.error('Failed to load payments:', e);
+        document.getElementById('paymentsTableBody').innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '!', title: 'Unable to load payments', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load payment history.');
+      }
+    }
+
+    async function payStaff(name, amount) {
+      if (!canManagePayroll) {
+        showToast('error', 'You do not have permission to process payroll payouts.');
+        return;
+      }
+
+      if (!confirm(`Pay ${fmtCurrency(amount)} to ${name}?`)) return;
+      try {
+        const res = await apiFetch(`${API_URL}/api/ledger/pay`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_name: name, amount })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showToast('error', data.error || 'Payment failed.');
+          return;
+        }
+
+        showToast('success', `Paid ${fmtCurrency(amount)} to ${name}.`);
+        await Promise.all([loadLedger(), loadPayments(), loadWeekly()]);
+        broadcastAppEvent('finance:changed', { action: 'ledger-paid', employee_name: name });
+      } catch {
+        showToast('error', 'Connection error while processing payment.');
+      }
     }
 
     async function loadWeekly(weekStart = '') {
@@ -248,7 +402,12 @@
     document.getElementById('logPrevBtn').addEventListener('click', () => loadShiftLog(logPage - 1));
     document.getElementById('logNextBtn').addEventListener('click', () => loadShiftLog(logPage + 1));
 
-    Promise.all([loadWeekly(), loadShiftLog()]);
+    subscribeAppEvent('finance:changed', () => {
+      loadLedger();
+      loadPayments();
+    });
+
+    Promise.all([loadWeekly(), loadShiftLog(), loadLedger(), loadPayments()]);
   </script>
 </body>
 </html>

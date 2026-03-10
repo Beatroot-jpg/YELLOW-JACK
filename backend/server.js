@@ -699,8 +699,8 @@ app.get('/api/ledger', requireAuth, async (req, res) => {
   }
 });
 
-// Pay employee (Admin/Owner only)
-app.post('/api/ledger/pay', requireRole(ADMIN_ROLES), async (req, res) => {
+// Pay employee (Manager/Admin/Owner)
+app.post('/api/ledger/pay', requireRole(['Manager', 'Admin', 'Owner']), async (req, res) => {
   const client = await pool.connect();
   try {
     const { employee_name, amount } = req.body;

@@ -130,7 +130,7 @@
             <button type="submit" form="saleForm" class="button-primary" id="saveBtn">Save Sale</button>
           </div>
           <p class="panel-subtitle panel-note">
-            Each sale automatically gives the worker a 10% cut and 90% goes to the business. Admin corrections, restores, and payouts are managed from the Admin page.
+            Each sale automatically gives the worker a 10% cut and 90% goes to the business. Payroll balances and payouts are managed from the Payroll page, while sales corrections stay in Admin.
           </p>
         </div>
 
@@ -171,12 +171,11 @@
                   <th>Time</th>
                   <th>Money Earnt</th>
                   <th>Business Made</th>
-                  <th>Admin</th>
                 </tr>
               </thead>
               <tbody id="salesTableBody">
-                <tr><td colspan="8" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(8,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-                <tr><td colspan="8" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(8,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -187,32 +186,6 @@
           </div>
           <div class="table-meta">
             <span id="tableMeta">Loading sales...</span>
-          </div>
-        </div>
-
-        <div class="panel">
-          <div class="panel-header">
-            <h3 class="panel-title">Ledger – Money Owed to Staff</h3>
-            <span class="panel-subtitle">10% cut from all logged sales</span>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table data-table--ledger">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Deals</th>
-                  <th>Total Money Earnt</th>
-                  <th>Pay</th>
-                </tr>
-              </thead>
-              <tbody id="ledgerTableBody">
-                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="table-meta">
-            <span>10% of each sale accumulated per staff member. Payout controls now live in the Admin page.</span>
           </div>
         </div>
       </section>
@@ -312,7 +285,7 @@
 
     async function loadSales(page = 1) {
       try {
-        document.getElementById('salesTableBody').innerHTML = createTableSkeleton(8, 4);
+        document.getElementById('salesTableBody').innerHTML = createTableSkeleton(7, 4);
         const res = await apiFetch(`${API_URL}/api/sales?${buildSalesQuery(page)}`);
         const data = await res.json();
         const sales = data.sales || [];
@@ -320,15 +293,11 @@
         currentPage = page;
 
         const tbody = document.getElementById('salesTableBody');
-        const canManageSales = canAccessAdmin(currentUser);
         if (!sales.length) {
-          tbody.innerHTML = `<tr><td colspan="8">${createEmptyState({ icon: '⟡', title: 'No sales recorded yet', description: 'Log your first sale to start tracking revenue and commission.', actionLabel: 'Add sale now', actionHref: '#saleForm' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '⟡', title: 'No sales recorded yet', description: 'Log your first sale to start tracking revenue and commission.', actionLabel: 'Add sale now', actionHref: '#saleForm' })}</td></tr>`;
         } else {
           tbody.innerHTML = sales.map(s => {
             const dt = new Date(s.created_at);
-            const updatedAtMs = s.updated_at ? new Date(s.updated_at).getTime() : 0;
-            const createdAtMs = s.created_at ? new Date(s.created_at).getTime() : 0;
-            const wasEdited = updatedAtMs - createdAtMs > 1000;
             return `<tr>
               <td>${s.employee_name}</td>
               <td>${s.description || '—'}</td>
@@ -337,7 +306,6 @@
               <td class="small">${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</td>
               <td class="amount">${fmtCurrency(s.money_earnt)}</td>
               <td class="amount">${fmtCurrency(s.business_made)}</td>
-              <td>${canManageSales ? `<a href="admin.html#salesAdminPanel" class="button-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Manage in Admin</a>${wasEdited ? `<div class="sale-edit-note">Edited${s.updated_by ? ` by ${s.updated_by}` : ''}</div>` : ''}` : '—'}</td>
             </tr>`;
           }).join('');
         }
@@ -350,40 +318,13 @@
         updateSalesFilterMeta();
       } catch (e) {
         console.error('Failed to load sales:', e);
-        document.getElementById('salesTableBody').innerHTML = `<tr><td colspan="8">${createEmptyState({ icon: '!', title: 'Unable to load sales', description: 'Please refresh and try again.' })}</td></tr>`;
+        document.getElementById('salesTableBody').innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '!', title: 'Unable to load sales', description: 'Please refresh and try again.' })}</td></tr>`;
         showToast('error', 'Failed to load sales history.');
       }
     }
 
-    async function loadLedger() {
-      try {
-        document.getElementById('ledgerTableBody').innerHTML = createTableSkeleton(4, 4);
-        const res = await apiFetch(`${API_URL}/api/ledger`);
-        const data = await res.json();
-        const ledger = data.ledger || [];
-
-        const tbody = document.getElementById('ledgerTableBody');
-        const canManagePayouts = canAccessAdmin(currentUser);
-        if (!ledger.length) {
-          tbody.innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Staff earnings will appear here once sales are logged.', actionLabel: 'Log a sale', actionHref: '#saleForm' })}</td></tr>`;
-        } else {
-          tbody.innerHTML = ledger.map(e => `
-            <tr>
-              <td>${e.employee_name}</td>
-              <td class="small">${e.deals_count} deals</td>
-              <td class="amount">${fmtCurrency(e.total_money_earnt)}</td>
-              <td>${canManagePayouts ? `<a href="admin.html" class="button-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Manage in Admin</a>` : '—'}</td>
-            </tr>`).join('');
-        }
-      } catch (e) {
-        console.error('Failed to load ledger:', e);
-        document.getElementById('ledgerTableBody').innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '!', title: 'Unable to load ledger', description: 'Please refresh and try again.' })}</td></tr>`;
-        showToast('error', 'Failed to load staff ledger.');
-      }
-    }
-
     async function refreshFinanceViews(page = currentPage) {
-      await Promise.all([loadSalesSummary(), loadSales(page), loadLedger()]);
+      await Promise.all([loadSalesSummary(), loadSales(page)]);
       if (currentPage > totalPages) {
         await loadSales(totalPages || 1);
       }
@@ -589,10 +530,9 @@
     subscribeAppEvent('finance:changed', () => {
       loadSalesSummary();
       loadSales(currentPage);
-      loadLedger();
     });
 
-    Promise.all([loadRoster(), loadSalesSummary(), loadSales(1), loadLedger(), loadActiveShifts()]);
+    Promise.all([loadRoster(), loadSalesSummary(), loadSales(1), loadActiveShifts()]);
 
     // Populate clock employee list from same roster
     async function populateClockRoster() {
