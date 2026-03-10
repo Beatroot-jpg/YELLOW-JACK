@@ -5,6 +5,10 @@
 
 const YJ_TOAST_QUEUE_KEY = 'yj_toast_queue';
 const YJ_REDIRECT_FLAG = '__yj_redirecting__';
+const YJ_ADMIN_ROLES = ['Admin', 'Owner'];
+const YJ_SYNC_CHANNEL = typeof BroadcastChannel !== 'undefined'
+  ? new BroadcastChannel('yellow-jack-sync')
+  : null;
 
 function ensureToastRoot() {
   let root = document.getElementById('toastStack');
@@ -104,6 +108,39 @@ function createActiveShiftSkeleton(itemCount = 3) {
     </div>`).join('');
 }
 
+function fmtCurrency(value) {
+  return '$' + Number(value || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function isAdminRole(role) {
+  return YJ_ADMIN_ROLES.includes(role);
+}
+
+function canAccessAdmin(user = null) {
+  const resolvedUser = user || JSON.parse(localStorage.getItem('yj_user') || 'null');
+  return isAdminRole(resolvedUser?.role);
+}
+
+function applyRoleVisibility() {
+  if (canAccessAdmin()) return;
+
+  document.querySelectorAll('a[href="admin.html"]').forEach(el => {
+    el.style.display = 'none';
+  });
+}
+
+function showInlineMessage(target, text, ok = true, duration = 4000) {
+  const el = typeof target === 'string' ? document.getElementById(target) : target;
+  if (!el) return;
+  el.textContent = text;
+  el.className = `ui-message ${ok ? 'ui-message--success' : 'ui-message--error'}`;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, duration);
+}
+
 function setButtonLoading(button, isLoading, loadingText = 'Working...') {
   if (!button) return;
   if (isLoading) {
@@ -123,11 +160,31 @@ function setButtonLoading(button, isLoading, loadingText = 'Working...') {
   }
 }
 
+function broadcastAppEvent(type, payload = {}) {
+  if (!YJ_SYNC_CHANNEL) return;
+  YJ_SYNC_CHANNEL.postMessage({ type, payload, ts: Date.now() });
+}
+
+function subscribeAppEvent(type, handler) {
+  if (!YJ_SYNC_CHANNEL || typeof handler !== 'function') {
+    return () => {};
+  }
+
+  const listener = (event) => {
+    if (event.data?.type === type) {
+      handler(event.data.payload || {});
+    }
+  };
+
+  YJ_SYNC_CHANNEL.addEventListener('message', listener);
+  return () => YJ_SYNC_CHANNEL.removeEventListener('message', listener);
+}
+
 function apiFetch(url, options = {}) {
   const token = localStorage.getItem('yj_token');
   const headers = {
     ...(options.headers || {}),
-    'Authorization': `Bearer ${token}`
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 
   return fetch(url, { ...options, headers }).then(res => {
@@ -156,8 +213,12 @@ function getUser() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', consumeQueuedToast, { once: true });
+  document.addEventListener('DOMContentLoaded', () => {
+    consumeQueuedToast();
+    applyRoleVisibility();
+  }, { once: true });
 } else {
   consumeQueuedToast();
+  applyRoleVisibility();
 }
 

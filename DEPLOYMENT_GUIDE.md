@@ -1,222 +1,113 @@
-# Yellow Jack - Complete Deployment Guide
+# Yellow Jack - Deployment Guide
 
-This is your master guide for deploying Yellow Jack to Railway (backend + database) and connecting the frontend.
+This is the current deployment path for the app in its present structure.
 
----
+## Active Deployment Split
 
-## 🎯 Deployment Architecture
+- **Backend:** `backend/`
+- **Frontend:** `frontend/`
+- **Database:** PostgreSQL
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      USER BROWSER                            │
-│                 (Username/Password Login)                    │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  FRONTEND (HTML/CSS/JS)                      │
-│              (Netlify or Railway Static)                     │
-│                                                              │
-│  • Static HTML/CSS/JS files                                 │
-│  • Login page with username/password                        │
-│  • localStorage for session management                      │
-│  • API calls to Railway backend                             │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         │ API Calls (CORS enabled)
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   RAILWAY (Backend)                          │
-│         yellow-jack-production.up.railway.app               │
-│                                                              │
-│  • Node.js Express server                                   │
-│  • Username/password authentication                         │
-│  • API endpoints (sales, roster, ledger, etc.)             │
-│  • Session management                                        │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-                         │ Database queries
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│              RAILWAY POSTGRESQL (Database)                   │
-│                                                              │
-│  • 6 tables (users, sales, roster, ledger, etc.)           │
-│  • Automatic backups                                         │
-│  • Connection pooling                                        │
-│  • SSL enabled                                               │
-└─────────────────────────────────────────────────────────────┘
-```
+Recommended setup:
 
----
+- **Backend + DB:** Railway
+- **Frontend:** Netlify
 
-## 📋 Prerequisites
+## 1. Deploy the Backend
 
-- [x] GitHub account
-- [x] Railway account (sign up at https://railway.app with GitHub)
-- [x] Code ready in GitHub repository
+Deploy the `backend/` directory to Railway.
 
----
+Required environment variables:
 
-## 🚀 Deployment Steps
+- `PGHOST`
+- `PGPORT`
+- `PGDATABASE`
+- `PGUSER`
+- `PGPASSWORD`
+- `JWT_SECRET`
+- `FRONTEND_URL`
+- `NODE_ENV=production`
 
-### **STEP 1: Deploy Backend to Railway** ⏱️ ~10 minutes
+The backend health route is:
 
-Follow the detailed guide: **`backend/RAILWAY_DEPLOYMENT.md`**
+- `GET /`
 
-**Quick Summary:**
-1. Create new Railway project
-2. Deploy from GitHub repo
-3. Add PostgreSQL database
-4. Set root directory to `YELLOW JACK/backend`
-5. Configure environment variables:
-   - `SESSION_SECRET` (random string)
-   - `FRONTEND_URL` (update later)
-   - `NODE_ENV=production`
-6. Generate domain (get your Railway URL)
-7. Test deployment with health check
+## 2. Create the First Admin User
 
-**Result:** Backend running at `https://your-app.up.railway.app`
-
----
-
-### **STEP 2: Test Backend & Create Admin User** ⏱️ ~5 minutes
+If the database has no users yet, create the first account with:
 
 ```bash
-# Test health check
-curl https://your-railway-url.up.railway.app/
-
-# Create first admin user
-curl -X POST https://your-railway-url.up.railway.app/auth/register \
+curl -X POST https://your-backend.up.railway.app/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123","full_name":"Admin User"}'
-
-# Test login
-curl -X POST https://your-railway-url.up.railway.app/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
+  -d '{"username":"admin","password":"change-me","full_name":"Admin User"}'
 ```
 
-**Result:** Admin user created, backend API working
+The first registered user becomes **Admin** automatically.
 
----
+After the first user exists, `/auth/register` requires authenticated admin access.
 
-### **STEP 3: Update Frontend Configuration** ⏱️ ~2 minutes
+## 3. Update Frontend Configuration
 
-1. Open `YELLOW JACK/config.js`
-2. Replace the URL:
-   ```javascript
-   const API_URL = 'https://your-actual-railway-url.up.railway.app';
-   ```
-3. Save the file
+Edit:
 
-**Result:** Frontend knows where to call the backend
+- `frontend/config.js`
 
----
+Set:
 
-### **STEP 4: Connect Frontend to Backend** ⏱️ ~30 minutes
+```javascript
+const API_URL = 'https://your-backend.up.railway.app';
+```
 
-Follow the detailed guide: **`FRONTEND_SETUP.md`**
+## 4. Deploy the Frontend
 
-**Quick Summary:**
-1. Add `<script src="config.js"></script>` to all HTML pages
-2. Create `login.html` page
-3. Add authentication check to all pages
-4. Add logout functionality
-5. Implement data loading for each page:
-   - Analytics: Load sales stats
-   - Sales: Load/create sales
-   - Payroll: Load ledger, record payments
-   - Roster: CRUD operations
-   - Blacklist: Add/remove entries
-   - Admin: User management
+Deploy the **`frontend/` folder** as the static site root.
 
-**Result:** Frontend can communicate with backend
+Important:
 
----
+- do **not** deploy the repository root as the frontend app
+- the active entry page is `index.html` inside `frontend/`
 
-### **STEP 5: Deploy Frontend** ⏱️ ~5 minutes
+## 5. Configure CORS
 
-**Option A: Netlify (Recommended)**
-1. Go to https://netlify.com
-2. Drag & drop your `YELLOW JACK` folder
-3. Or connect GitHub repo for auto-deploy
-4. Get your Netlify URL (e.g., `https://yellow-jack.netlify.app`)
+Set Railway env var:
 
-**Option B: Railway Static Hosting**
-1. In Railway project, click "+ New"
-2. Select "Empty Service"
-3. Connect to GitHub repo
-4. Set root directory to `YELLOW JACK`
-5. Railway will serve static files
+```text
+FRONTEND_URL=https://your-frontend-domain.netlify.app
+```
 
-**Result:** Frontend deployed and accessible
+The value should exactly match the deployed frontend origin.
 
----
+## 6. Verification Checklist
 
-### **STEP 6: Update CORS Settings** ⏱️ ~2 minutes
+- [ ] Backend health route responds
+- [ ] First admin user can be created if DB is empty
+- [ ] Login works from `frontend/index.html`
+- [ ] Dashboard loads after login
+- [ ] Sales page can create sales
+- [ ] Payroll page loads weekly summaries
+- [ ] Admin page loads for admin users
+- [ ] Logout works cleanly
 
-1. Go to Railway dashboard
-2. Open your backend service
-3. Go to "Variables" tab
-4. Update `FRONTEND_URL` to your actual frontend URL:
-   ```
-   FRONTEND_URL=https://yellow-jack.netlify.app
-   ```
-5. Railway will auto-redeploy
+## Common Issues
 
-**Result:** CORS configured, frontend can call backend
+### CORS errors
+Check `FRONTEND_URL` matches the deployed frontend origin exactly.
 
----
+### Auth errors after login
+Check `frontend/config.js` points at the correct backend URL.
 
-## ✅ Verification Checklist
+### Frontend looks outdated after deploy
+Make sure you deployed the `frontend/` directory and not an old root-level build.
 
-After deployment, verify everything works:
+### Backend starts but users cannot authenticate
+Confirm `JWT_SECRET` is set in production.
 
-- [ ] Backend health check returns `{"status":"ok"}`
-- [ ] Can create admin user via API
-- [ ] Can login via API
-- [ ] Frontend loads without errors
-- [ ] Login page works
-- [ ] After login, redirects to analytics page
-- [ ] Can create a sale
-- [ ] Sales appear in sales history
-- [ ] Ledger updates automatically
-- [ ] Can view roster
-- [ ] Can add to blacklist
-- [ ] Logout works
+## Related Docs
 
----
-
-## 🐛 Common Issues & Solutions
-
-### "CORS Error" in browser console
-**Solution:** Update `FRONTEND_URL` in Railway to match your frontend URL exactly (no trailing slash)
-
-### "Authentication required" errors
-**Solution:** Make sure `credentials: 'include'` is in all fetch requests
-
-### "Cannot find module" on Railway
-**Solution:** Verify root directory is set to `YELLOW JACK/backend`
-
-### Database connection fails
-**Solution:** Check that PostgreSQL service is running in Railway
-
-### Session not persisting
-**Solution:** Check that user data is being saved to localStorage after login
-
----
-
-## 📚 Documentation Files
-
-- **`backend/RAILWAY_DEPLOYMENT.md`** - Detailed Railway setup
-- **`FRONTEND_SETUP.md`** - Frontend integration guide
-- **`backend/README.md`** - API documentation
-- **`backend/SETUP_GUIDE.md`** - Local development setup
-- **`DEVELOPMENT_REFERENCE.md`** - Los Santos Sanitation reference
-
----
-
-## 🎉 You're Done!
+- `FRONTEND_SETUP.md`
+- `backend/README.md`
+- `backend/RAILWAY_DEPLOYMENT.md`
+- `backend/SETUP_GUIDE.md`
 
 Once all steps are complete, you'll have:
 

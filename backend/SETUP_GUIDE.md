@@ -72,7 +72,7 @@ PGPASSWORD=YOUR_POSTGRES_PASSWORD_HERE
 
 PORT=3000
 NODE_ENV=development
-SESSION_SECRET=change_this_to_a_random_string_in_production
+JWT_SECRET=change_this_to_a_random_string_in_production
 ```
 
 ### 5. Start the Server
@@ -152,8 +152,8 @@ You should get back:
 ## Next Steps
 
 1. ✅ Backend is running
-2. Connect your frontend HTML files to the API
-3. Update frontend JavaScript to call these endpoints
+2. Point `frontend/config.js` at the backend API
+3. Serve or deploy the `frontend/` app
 4. Test sales creation, roster management, etc.
 
 ## API Testing

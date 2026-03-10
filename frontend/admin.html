@@ -8,21 +8,37 @@
   <style>
     .role-select { padding:5px 10px; background:var(--primary-60); border:1px solid var(--border-subtle); border-radius:6px; color:var(--text-main); font-size:0.85rem; cursor:pointer; }
     .role-select:focus { outline:none; border-color:var(--accent-10); }
+    .role-owner { color:#ffb86b; font-weight:700; }
     .role-admin { color:var(--accent-10); font-weight:700; }
     .role-manager { color:#6fcf97; font-weight:700; }
     .role-staff { color:var(--text-muted); }
     .access-denied { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:16px; color:var(--text-muted); text-align:center; }
     .access-denied h3 { font-size:1.5rem; color:var(--accent-10); text-transform:uppercase; letter-spacing:2px; }
     .stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; }
+    .admin-toolbar { display:grid; grid-template-columns:1.4fr 180px auto; gap:12px; align-items:end; }
+    .sale-action-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .sale-edit-note { margin-top:6px; font-size:0.78rem; color:var(--text-muted); }
+    .sale-status-pill { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+    .sale-status-pill--active { background:rgba(111,207,151,0.12); color:#6fcf97; }
+    .sale-status-pill--deleted { background:rgba(255,107,107,0.12); color:#ff9b9b; }
+    .sale-history-list { display:flex; flex-direction:column; gap:12px; margin-top:10px; max-height:55vh; overflow:auto; }
+    .sale-history-entry { border:1px solid var(--border-subtle); border-radius:14px; padding:14px; background:rgba(29,18,6,0.88); }
+    .sale-history-entry__top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .sale-history-entry__title { font-weight:700; color:var(--text-main); }
+    .sale-history-entry__meta { font-size:0.82rem; color:var(--text-muted); }
+    .sale-history-entry__reason { margin-top:8px; font-size:0.88rem; color:var(--accent-10); }
+    .sale-history-entry__grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:12px; }
+    .sale-history-card { border:1px solid var(--border-subtle); border-radius:10px; padding:10px; background:rgba(255,255,255,0.02); }
+    .sale-history-card__label { font-size:0.74rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+    .sale-history-card__line { font-size:0.88rem; color:var(--text-main); margin-bottom:4px; }
+    .sale-history-badge { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:0.74rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:rgba(255,196,74,0.16); color:var(--accent-10); }
+    @media (max-width: 980px) { .admin-toolbar { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar">
-      <div class="brand">
-        <img src="Main Logo.png" alt="Yellow Jack" />
-        <h1>Yellow Jack</h1>
-      </div>
+      <div class="brand"><img src="Main Logo.png" alt="Yellow Jack" /><h1>Yellow Jack</h1></div>
       <nav class="nav">
         <a href="dashboard.html" class="nav-link" data-icon="⌂">Dashboard</a>
         <a href="analytics.html" class="nav-link" data-icon="◔">Analytics</a>
@@ -36,142 +52,149 @@
 
     <main class="main">
       <header>
-        <div><h2>Admin</h2><span>System user management</span></div>
+        <div><h2>Admin</h2><span>Centralized access, payouts, and correction controls</span></div>
         <span id="currentUser">Loading...</span>
       </header>
 
-      <!-- Access Denied (shown to non-admins) -->
       <div class="access-denied" id="accessDenied" style="display:none">
         <h3>⚠ Access Restricted</h3>
-        <p>This page is only accessible to Admins.</p>
+        <p>This page is only accessible to Admins and Owners.</p>
         <a href="dashboard.html" class="button-primary" style="text-decoration:none;display:inline-block">Back to Dashboard</a>
       </div>
 
-      <!-- Admin content -->
-      <div id="adminContent">
+      <div id="adminContent" style="display:none">
         <div class="section-intro">
           <div class="section-intro__copy">
             <span class="section-intro__eyebrow">Administration</span>
-            <h3 class="section-intro__title">Manage user access and roles</h3>
-            <p class="section-intro__desc">Review account totals, adjust role permissions, and create new users for staff operations.</p>
+            <h3 class="section-intro__title">Consolidated admin workspace</h3>
+            <p class="section-intro__desc">Manage user access, pay out ledger balances, correct sales mistakes, review audit history, and restore archived sales from one place.</p>
           </div>
-          <span class="section-intro__meta">Admin-only controls</span>
+          <span class="section-intro__meta">Admin / Owner controls</span>
         </div>
 
-        <!-- Stats -->
         <div class="stat-grid">
           <div class="card"><h3>Total Users</h3><div class="value" id="stat-users">—</div></div>
+          <div class="card"><h3>Owners</h3><div class="value" id="stat-owners">—</div></div>
           <div class="card"><h3>Admins</h3><div class="value" id="stat-admins">—</div></div>
           <div class="card"><h3>Managers</h3><div class="value" id="stat-managers">—</div></div>
           <div class="card"><h3>Staff</h3><div class="value" id="stat-staff">—</div></div>
         </div>
 
-        <!-- User Table -->
         <div class="panel">
-          <div class="panel-header">
-            <h3 class="panel-title">User Accounts</h3>
-            <span class="panel-subtitle">Manage roles and access</span>
-          </div>
-          <div class="table-wrapper">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>Full Name</th>
-                  <th>Role</th>
-                  <th>Joined</th>
-                  <th>Change Role</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="usersTableBody">
-                <tr><td colspan="6" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(6,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-                <tr><td colspan="6" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(6,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-              </tbody>
-            </table>
-          </div>
+          <div class="panel-header"><h3 class="panel-title">User Accounts</h3><span class="panel-subtitle">Manage roles and access</span></div>
+          <div class="table-wrapper"><table class="data-table"><thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Joined</th><th>Change Role</th><th>Actions</th></tr></thead><tbody id="usersTableBody"></tbody></table></div>
         </div>
 
-        <!-- Register New User -->
         <div class="panel" id="createUserPanel">
-          <div class="panel-header">
-            <h3 class="panel-title">Create New User</h3>
-          </div>
+          <div class="panel-header"><h3 class="panel-title">Create New User</h3><span class="panel-subtitle">Owner, admin, manager, and staff accounts</span></div>
           <div class="form-grid form-grid--4-auto">
             <div class="form-field"><label class="form-label">Username</label><input class="form-input" id="newUsername" placeholder="username" /></div>
             <div class="form-field"><label class="form-label">Full Name</label><input class="form-input" id="newFullName" placeholder="Full Name" /></div>
             <div class="form-field"><label class="form-label">Password</label><input class="form-input" type="password" id="newPassword" placeholder="••••••••" /></div>
-            <div class="form-field">
-              <label class="form-label">Role</label>
-              <select class="form-input" id="newRole">
-                <option value="Staff">Staff</option>
-                <option value="Manager">Manager</option>
-                <option value="Admin">Admin</option>
-              </select>
-            </div>
+            <div class="form-field"><label class="form-label">Role</label><select class="form-input" id="newRole"><option value="Staff">Staff</option><option value="Manager">Manager</option><option value="Admin">Admin</option><option value="Owner">Owner</option></select></div>
             <button class="button-primary" id="createBtn">Create</button>
           </div>
-          <div class="form-help">Create secure access for new staff, managers, or admin users.</div>
+          <div class="form-help">All admin-level accounts and future admin-only features should be managed here.</div>
           <div id="createMsg" class="ui-message"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3 class="panel-title">Ledger Payouts</h3><span class="panel-subtitle">Admin/Owner payout control consolidated here</span></div>
+          <div class="table-wrapper"><table class="data-table"><thead><tr><th>Employee</th><th>Deals</th><th>Outstanding</th><th>Last Payment</th><th>Actions</th></tr></thead><tbody id="ledgerTableBody"></tbody></table></div>
+        </div>
+
+        <div class="panel" id="salesAdminPanel">
+          <div class="panel-header"><h3 class="panel-title">Sales Corrections & Restore</h3><span class="panel-subtitle">Recent sales, archived sales, audit history, and recovery controls</span></div>
+          <div class="admin-toolbar" style="margin-bottom:14px;">
+            <div class="form-field"><label class="form-label" for="salesSearch">Filter by employee</label><input class="form-input" id="salesSearch" placeholder="Search by name" /></div>
+            <div class="form-field"><label class="form-label" for="salesStatusFilter">Status</label><select class="form-input" id="salesStatusFilter"><option value="active">Active Sales</option><option value="deleted">Archived Sales</option><option value="all">All Sales</option></select></div>
+            <button class="button-secondary" id="salesRefreshBtn">Refresh Sales</button>
+          </div>
+          <div class="sale-edit-note" id="salesAdminMeta">Loading sales controls…</div>
+          <div class="table-wrapper"><table class="data-table"><thead><tr><th>Name</th><th>Description</th><th>Total</th><th>Created</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead><tbody id="salesAdminTableBody"></tbody></table></div>
         </div>
       </div>
     </main>
   </div>
+
+  <datalist id="sale-employee-list"></datalist>
+
+  <div class="modal-overlay" id="editSaleModal">
+    <div class="modal">
+      <h3>Edit Sale</h3>
+      <input type="hidden" id="editSaleId" />
+      <div class="form-field"><label class="form-label" for="editSaleEmployee">Name</label><input id="editSaleEmployee" class="form-input" list="sale-employee-list" placeholder="Type or choose staff member" /></div>
+      <div class="form-field"><label class="form-label" for="editSaleDescription">Description</label><input id="editSaleDescription" class="form-input" type="text" placeholder="What was sold / table / notes" /></div>
+      <div class="form-field"><label class="form-label" for="editSaleAmount">Total Amount ($)</label><input id="editSaleAmount" class="form-input" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-field"><label class="form-label" for="editSaleReason">Reason for change</label><textarea id="editSaleReason" class="form-input" rows="3" placeholder="Explain what was corrected and why"></textarea><div class="sale-edit-note">Required. Stored in the sale audit trail.</div></div>
+      <div id="editSaleMsg" class="ui-message" style="margin-top:10px;"></div>
+      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeEditSaleModal()">Cancel</button><button type="button" class="button-primary" id="saveEditSaleBtn">Save Changes</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="saleHistoryModal">
+    <div class="modal" style="max-width:860px; width:min(92vw, 860px);">
+      <h3 id="saleHistoryTitle">Sale History</h3>
+      <div class="sale-edit-note">View who changed this sale, when they changed it, and why.</div>
+      <div id="saleHistoryContent" class="sale-history-list"></div>
+      <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeSaleHistoryModal()">Close</button></div>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script src="shared.js"></script>
   <script>
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
+    document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
 
-    document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
-
-    // Restrict to Admin only
-    if (user?.role !== 'Admin') {
-      document.getElementById('adminContent').style.display = 'none';
+    if (!canAccessAdmin(user)) {
       document.getElementById('accessDenied').style.display = 'flex';
     } else {
-      loadUsers();
+      document.getElementById('adminContent').style.display = 'block';
+      Promise.all([loadUsers(), loadLedger(), loadSalesAdmin(), loadRosterOptions()]);
+    }
+
+    let currentAdminSalesRows = [];
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function roleClassFor(role) {
+      return role === 'Owner' ? 'role-owner' : role === 'Admin' ? 'role-admin' : role === 'Manager' ? 'role-manager' : 'role-staff';
+    }
+
+    async function loadRosterOptions() {
+      try {
+        const res = await apiFetch(`${API_URL}/api/roster`);
+        const data = await res.json();
+        document.getElementById('sale-employee-list').innerHTML = (data.roster || []).map(m => `<option value="${m.full_name || m.name}"></option>`).join('');
+      } catch (e) { console.error('Failed to load roster options:', e); }
     }
 
     async function loadUsers() {
       try {
+        document.getElementById('usersTableBody').innerHTML = createTableSkeleton(6, 3);
         const res = await apiFetch(`${API_URL}/api/users`);
         const data = await res.json();
         const users = data.users || [];
-
-        // Stats
         document.getElementById('stat-users').textContent = users.length;
+        document.getElementById('stat-owners').textContent = users.filter(u => u.role === 'Owner').length;
         document.getElementById('stat-admins').textContent = users.filter(u => u.role === 'Admin').length;
         document.getElementById('stat-managers').textContent = users.filter(u => u.role === 'Manager').length;
         document.getElementById('stat-staff').textContent = users.filter(u => u.role === 'Staff').length;
-
         const tbody = document.getElementById('usersTableBody');
         if (!users.length) {
-          tbody.innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '⚙', title: 'No users found', description: 'Create a staff, manager, or admin account to get started.', actionLabel: 'Create user', actionHref: '#createUserPanel' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '⚙', title: 'No users found', description: 'Create a staff, manager, admin, or owner account to get started.', actionLabel: 'Create user', actionHref: '#createUserPanel' })}</td></tr>`;
           return;
         }
-
         tbody.innerHTML = users.map(u => {
-          const roleClass = u.role === 'Admin' ? 'role-admin' : u.role === 'Manager' ? 'role-manager' : 'role-staff';
           const isSelf = u.id === user.id;
-          const joined = u.created_at ? new Date(u.created_at).toLocaleDateString() : '—';
-          return `<tr>
-            <td style="font-weight:700">${u.username}</td>
-            <td>${u.full_name}</td>
-            <td class="${roleClass}">${u.role}</td>
-            <td class="small">${joined}</td>
-            <td>
-              ${!isSelf ? `<select class="role-select" onchange="changeRole(${u.id}, this.value)">
-                <option ${u.role==='Staff'?'selected':''}>Staff</option>
-                <option ${u.role==='Manager'?'selected':''}>Manager</option>
-                <option ${u.role==='Admin'?'selected':''}>Admin</option>
-              </select>` : '<span class="small" style="color:var(--text-muted)">You</span>'}
-            </td>
-            <td>
-              ${!isSelf ? `<button class="button-secondary" style="border-color:rgba(255,100,100,0.4);color:#ff6464" onclick="deleteUser(${u.id},'${u.username}')">Delete</button>` : '—'}
-            </td>
-          </tr>`;
+          return `<tr><td style="font-weight:700">${escapeHtml(u.username)}</td><td>${escapeHtml(u.full_name || '—')}</td><td class="${roleClassFor(u.role)}">${escapeHtml(u.role)}</td><td class="small">${u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td><td>${!isSelf ? `<select class="role-select" data-user-id="${u.id}"><option value="Staff" ${u.role==='Staff'?'selected':''}>Staff</option><option value="Manager" ${u.role==='Manager'?'selected':''}>Manager</option><option value="Admin" ${u.role==='Admin'?'selected':''}>Admin</option><option value="Owner" ${u.role==='Owner'?'selected':''}>Owner</option></select>` : '<span class="small" style="color:var(--text-muted)">You</span>'}</td><td>${!isSelf ? `<button class="button-secondary delete-user-btn" data-user-id="${u.id}" data-username="${escapeHtml(u.username)}" style="border-color:rgba(255,100,100,0.4);color:#ff6464">Delete</button>` : '—'}</td></tr>`;
         }).join('');
+        document.querySelectorAll('.role-select').forEach(el => el.addEventListener('change', () => changeRole(el.dataset.userId, el.value)));
+        document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', () => deleteUser(btn.dataset.userId, btn.dataset.username)));
       } catch (e) {
         console.error('Failed to load users:', e);
         document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="6">${createEmptyState({ icon: '!', title: 'Unable to load users', description: 'Please refresh and try again.' })}</td></tr>`;
@@ -180,35 +203,178 @@
     }
 
     async function changeRole(id, role) {
-      const res = await apiFetch(`${API_URL}/api/users/${id}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role })
-      });
-      if (res.ok) {
-        showToast('success', `User role updated to ${role}.`);
-        loadUsers();
-      } else {
-        showToast('error', 'Failed to update user role.');
-      }
+      const res = await apiFetch(`${API_URL}/api/users/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) });
+      if (res.ok) { showToast('success', `User role updated to ${role}.`); loadUsers(); }
+      else { const data = await res.json().catch(() => ({})); showToast('error', data.error || 'Failed to update user role.'); }
     }
 
     async function deleteUser(id, username) {
       if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
       const res = await apiFetch(`${API_URL}/api/users/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast('success', `Deleted user "${username}".`);
-        loadUsers();
-      } else {
-        showToast('error', 'Failed to delete user.');
+      if (res.ok) { showToast('success', `Deleted user "${username}".`); loadUsers(); }
+      else { const data = await res.json().catch(() => ({})); showToast('error', data.error || 'Failed to delete user.'); }
+    }
+
+    async function loadLedger() {
+      try {
+        document.getElementById('ledgerTableBody').innerHTML = createTableSkeleton(5, 4);
+        const res = await apiFetch(`${API_URL}/api/ledger`);
+        const data = await res.json();
+        const ledger = data.ledger || [];
+        const tbody = document.getElementById('ledgerTableBody');
+        if (!ledger.length) {
+          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Staff earnings will appear here once sales are logged.' })}</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = ledger.map(e => `<tr><td>${escapeHtml(e.employee_name)}</td><td class="small">${e.deals_count} deals</td><td class="amount">${fmtCurrency(e.total_money_earnt)}</td><td class="small">${e.last_payment_date ? new Date(e.last_payment_date).toLocaleDateString() : 'Never'}</td><td><button class="button-secondary pay-ledger-btn" data-name="${encodeURIComponent(e.employee_name)}" data-amount="${e.total_money_earnt}">Pay ${fmtCurrency(e.total_money_earnt)}</button></td></tr>`).join('');
+        document.querySelectorAll('.pay-ledger-btn').forEach(btn => btn.addEventListener('click', () => payStaff(decodeURIComponent(btn.dataset.name), Number(btn.dataset.amount))));
+      } catch (e) {
+        console.error('Failed to load ledger:', e);
+        document.getElementById('ledgerTableBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load ledger', description: 'Please refresh and try again.' })}</td></tr>`;
+        showToast('error', 'Failed to load payout ledger.');
       }
     }
 
-    function showMsg(text, ok) {
-      const el = document.getElementById('createMsg');
-      el.textContent = text;
-      el.className = `ui-message ${ok ? 'ui-message--success' : 'ui-message--error'}`;
-      el.style.display = 'block';
-      setTimeout(() => { el.style.display = 'none'; }, 5000);
+    function buildSalesAdminQuery() {
+      const params = new URLSearchParams({ page: 1, limit: 15, status: document.getElementById('salesStatusFilter').value });
+      const employee = document.getElementById('salesSearch').value.trim();
+      if (employee) params.set('employee', employee);
+      return params.toString();
+    }
+
+    function bindSalesAdminActions() {
+      document.querySelectorAll('.edit-sale-btn').forEach(btn => btn.addEventListener('click', () => openEditSaleModal(btn.dataset.saleId)));
+      document.querySelectorAll('.history-sale-btn').forEach(btn => btn.addEventListener('click', () => openSaleHistoryModal(btn.dataset.saleId)));
+      document.querySelectorAll('.archive-sale-btn').forEach(btn => btn.addEventListener('click', () => archiveSale(btn.dataset.saleId)));
+      document.querySelectorAll('.restore-sale-btn').forEach(btn => btn.addEventListener('click', () => restoreSale(btn.dataset.saleId)));
+    }
+
+    async function loadSalesAdmin() {
+      try {
+        document.getElementById('salesAdminTableBody').innerHTML = createTableSkeleton(7, 4);
+        const res = await apiFetch(`${API_URL}/api/sales?${buildSalesAdminQuery()}`);
+        const data = await res.json();
+        const sales = data.sales || [];
+        currentAdminSalesRows = sales;
+        document.getElementById('salesAdminMeta').textContent = `Showing ${sales.length} of ${data.pagination?.total ?? 0} sales · ${document.getElementById('salesStatusFilter').selectedOptions[0].text}`;
+        const tbody = document.getElementById('salesAdminTableBody');
+        if (!sales.length) {
+          tbody.innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '⟡', title: 'No sales found', description: 'Try a different status or search filter.' })}</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = sales.map(s => {
+          const created = s.created_at ? new Date(s.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+          const updated = s.updated_at ? new Date(s.updated_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+          const statusBadge = s.deleted_at ? `<span class="sale-status-pill sale-status-pill--deleted">Archived</span><div class="sale-edit-note">${escapeHtml(s.deleted_reason || 'No reason')}</div>` : `<span class="sale-status-pill sale-status-pill--active">Active</span>`;
+          const actions = s.deleted_at
+            ? `<button type="button" class="button-secondary history-sale-btn" data-sale-id="${s.id}">History</button><button type="button" class="button-secondary restore-sale-btn" data-sale-id="${s.id}">Restore</button>`
+            : `<button type="button" class="button-secondary edit-sale-btn" data-sale-id="${s.id}">Edit</button><button type="button" class="button-secondary history-sale-btn" data-sale-id="${s.id}">History</button><button type="button" class="button-secondary archive-sale-btn" data-sale-id="${s.id}" style="border-color:rgba(255,100,100,0.35);color:#ff9b9b;">Archive</button>`;
+          return `<tr><td>${escapeHtml(s.employee_name)}</td><td>${escapeHtml(s.description || '—')}</td><td class="amount">${fmtCurrency(s.total_amount)}</td><td class="small">${created}</td><td>${statusBadge}</td><td class="small">${updated}${s.updated_by ? `<div class="sale-edit-note">by ${escapeHtml(s.updated_by)}</div>` : ''}</td><td><div class="sale-action-row">${actions}</div></td></tr>`;
+        }).join('');
+        bindSalesAdminActions();
+      } catch (e) {
+        console.error('Failed to load admin sales:', e);
+        document.getElementById('salesAdminTableBody').innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '!', title: 'Unable to load admin sales', description: 'Please refresh and try again.' })}</td></tr>`;
+        document.getElementById('salesAdminMeta').textContent = 'Unable to load sales controls.';
+        showToast('error', 'Failed to load sales corrections panel.');
+      }
+    }
+
+    function openEditSaleModal(saleId) {
+      const sale = currentAdminSalesRows.find(entry => String(entry.id) === String(saleId));
+      if (!sale) return showToast('error', 'Could not find that sale to edit.');
+      document.getElementById('editSaleId').value = sale.id;
+      document.getElementById('editSaleEmployee').value = sale.employee_name || '';
+      document.getElementById('editSaleDescription').value = sale.description || '';
+      document.getElementById('editSaleAmount').value = Number(sale.total_amount || 0);
+      document.getElementById('editSaleReason').value = '';
+      document.getElementById('editSaleMsg').style.display = 'none';
+      document.getElementById('editSaleModal').classList.add('open');
+    }
+
+    function closeEditSaleModal() {
+      document.getElementById('editSaleModal').classList.remove('open');
+      document.getElementById('editSaleMsg').style.display = 'none';
+      document.getElementById('editSaleReason').value = '';
+    }
+
+    function renderHistorySnapshot(label, snapshot) {
+      if (!snapshot) return `<div class="sale-history-card"><div class="sale-history-card__label">${escapeHtml(label)}</div><div class="sale-history-card__line">No state recorded.</div></div>`;
+      return `<div class="sale-history-card"><div class="sale-history-card__label">${escapeHtml(label)}</div><div class="sale-history-card__line"><strong>Staff:</strong> ${escapeHtml(snapshot.employee_name || '—')}</div><div class="sale-history-card__line"><strong>Description:</strong> ${escapeHtml(snapshot.description || '—')}</div><div class="sale-history-card__line"><strong>Total:</strong> ${escapeHtml(fmtCurrency(snapshot.total_amount || 0))}</div><div class="sale-history-card__line"><strong>Staff Cut:</strong> ${escapeHtml(fmtCurrency(snapshot.money_earnt || 0))}</div><div class="sale-history-card__line"><strong>Business:</strong> ${escapeHtml(fmtCurrency(snapshot.business_made || 0))}</div></div>`;
+    }
+
+    function renderHistoryEntry(entry) {
+      const when = entry.changed_at ? new Date(entry.changed_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown time';
+      const cards = entry.action === 'CREATE' ? renderHistorySnapshot('Created record', entry.after_state) : entry.action === 'DELETE' ? renderHistorySnapshot('Archived record', entry.after_state || entry.before_state) : entry.action === 'RESTORE' ? `${renderHistorySnapshot('Before restore', entry.before_state)}${renderHistorySnapshot('After restore', entry.after_state)}` : `${renderHistorySnapshot('Before', entry.before_state)}${renderHistorySnapshot('After', entry.after_state)}`;
+      return `<div class="sale-history-entry"><div class="sale-history-entry__top"><div><div class="sale-history-entry__title">${escapeHtml(entry.action)} change</div><div class="sale-history-entry__meta">${escapeHtml(entry.changed_by || 'Unknown user')} • ${escapeHtml(when)}</div></div><span class="sale-history-badge">${escapeHtml(entry.action)}</span></div><div class="sale-history-entry__reason">Reason: ${escapeHtml(entry.change_reason || 'No reason recorded')}</div><div class="sale-history-entry__grid">${cards}</div></div>`;
+    }
+
+    async function openSaleHistoryModal(saleId) {
+      const sale = currentAdminSalesRows.find(entry => String(entry.id) === String(saleId));
+      document.getElementById('saleHistoryTitle').textContent = sale ? `Sale History · ${sale.employee_name}` : `Sale History · #${saleId}`;
+      document.getElementById('saleHistoryContent').innerHTML = createActiveShiftSkeleton(3);
+      document.getElementById('saleHistoryModal').classList.add('open');
+      try {
+        const res = await apiFetch(`${API_URL}/api/sales/${saleId}/history`);
+        const data = await res.json();
+        if (!res.ok) {
+          document.getElementById('saleHistoryContent').innerHTML = createEmptyState({ icon: '!', title: 'History unavailable', description: data.error || 'We could not load sale history right now.' });
+          return;
+        }
+        const history = data.history || [];
+        document.getElementById('saleHistoryContent').innerHTML = history.length ? history.map(renderHistoryEntry).join('') : createEmptyState({ icon: '◌', title: 'No history yet', description: 'No revisions have been recorded for this sale.' });
+      } catch {
+        document.getElementById('saleHistoryContent').innerHTML = createEmptyState({ icon: '!', title: 'History unavailable', description: 'Connection error while loading sale history.' });
+      }
+    }
+
+    function closeSaleHistoryModal() {
+      document.getElementById('saleHistoryModal').classList.remove('open');
+    }
+
+    async function archiveSale(saleId) {
+      const sale = currentAdminSalesRows.find(entry => String(entry.id) === String(saleId));
+      if (!sale) return showToast('error', 'Could not find that sale to archive.');
+      if (!confirm(`Archive the sale for ${sale.employee_name} (${fmtCurrency(sale.total_amount)})?`)) return;
+      const reason = prompt('Reason for archiving (required):', '');
+      if (reason === null) return;
+      if (!reason.trim()) return showToast('error', 'Archive reason is required.');
+      try {
+        const res = await apiFetch(`${API_URL}/api/sales/${saleId}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change_reason: reason.trim() }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return showToast('error', data.error || 'Failed to archive sale.');
+        showToast('success', data.message || 'Sale archived successfully.');
+        await Promise.all([loadSalesAdmin(), loadLedger()]);
+        broadcastAppEvent('finance:changed', { action: 'sale-archived', saleId });
+      } catch { showToast('error', 'Connection error while archiving sale.'); }
+    }
+
+    async function restoreSale(saleId) {
+      const sale = currentAdminSalesRows.find(entry => String(entry.id) === String(saleId));
+      if (!sale) return showToast('error', 'Could not find that sale to restore.');
+      const reason = prompt('Reason for restoring this archived sale (required):', '');
+      if (reason === null) return;
+      if (!reason.trim()) return showToast('error', 'Restore reason is required.');
+      try {
+        const res = await apiFetch(`${API_URL}/api/sales/${saleId}/restore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change_reason: reason.trim() }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return showToast('error', data.error || 'Failed to restore sale.');
+        showToast('success', data.message || 'Sale restored successfully.');
+        await Promise.all([loadSalesAdmin(), loadLedger()]);
+        broadcastAppEvent('finance:changed', { action: 'sale-restored', saleId });
+      } catch { showToast('error', 'Connection error while restoring sale.'); }
+    }
+
+    async function payStaff(name, amount) {
+      if (!confirm(`Pay ${fmtCurrency(amount)} to ${name}?`)) return;
+      try {
+        const res = await apiFetch(`${API_URL}/api/ledger/pay`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_name: name, amount }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return showToast('error', data.error || 'Payment failed.');
+        showToast('success', `Paid ${fmtCurrency(amount)} to ${name}.`);
+        await loadLedger();
+        broadcastAppEvent('finance:changed', { action: 'ledger-paid', employee_name: name });
+      } catch { showToast('error', 'Connection error while processing payment.'); }
     }
 
     document.getElementById('createBtn').addEventListener('click', async () => {
@@ -217,34 +383,54 @@
       const full_name = document.getElementById('newFullName').value.trim();
       const password = document.getElementById('newPassword').value;
       const role = document.getElementById('newRole').value;
-      if (!username || !password || !full_name) { showMsg('All fields are required', false); return; }
+      if (!username || !password || !full_name) return showInlineMessage('createMsg', 'All fields are required', false, 5000);
       btn.dataset.originalLabel = 'Create';
       setButtonLoading(btn, true, 'Creating...');
       try {
-        const res = await apiFetch(`${API_URL}/auth/register`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, full_name, password, role })
-        });
+        const res = await apiFetch(`${API_URL}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, full_name, password, role }) });
         const data = await res.json();
-        if (res.ok) {
-          showMsg(`User "${username}" created as ${role}`, true);
-          showToast('success', `User "${username}" created.`);
-          document.getElementById('newUsername').value = '';
-          document.getElementById('newFullName').value = '';
-          document.getElementById('newPassword').value = '';
-          loadUsers();
-        } else {
-          showMsg(data.error || 'Failed to create user', false);
-          showToast('error', data.error || 'Failed to create user.');
-        }
+        if (!res.ok) { showInlineMessage('createMsg', data.error || 'Failed to create user', false, 5000); return showToast('error', data.error || 'Failed to create user.'); }
+        showInlineMessage('createMsg', `User "${username}" created as ${role}`, true, 5000);
+        showToast('success', `User "${username}" created.`);
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newFullName').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newRole').value = 'Staff';
+        loadUsers();
       } catch {
-        showMsg('Connection error while creating user', false);
+        showInlineMessage('createMsg', 'Connection error while creating user', false, 5000);
         showToast('error', 'Connection error while creating user.');
-      } finally {
-        setButtonLoading(btn, false);
-      }
+      } finally { setButtonLoading(btn, false); }
+    });
+
+    document.getElementById('salesRefreshBtn').addEventListener('click', () => loadSalesAdmin());
+    document.getElementById('salesStatusFilter').addEventListener('change', () => loadSalesAdmin());
+    document.getElementById('salesSearch').addEventListener('keydown', (event) => { if (event.key === 'Enter') loadSalesAdmin(); });
+    document.getElementById('editSaleModal').addEventListener('click', (event) => { if (event.target.id === 'editSaleModal') closeEditSaleModal(); });
+    document.getElementById('saleHistoryModal').addEventListener('click', (event) => { if (event.target.id === 'saleHistoryModal') closeSaleHistoryModal(); });
+
+    document.getElementById('saveEditSaleBtn').addEventListener('click', async () => {
+      const saleId = document.getElementById('editSaleId').value;
+      const btn = document.getElementById('saveEditSaleBtn');
+      btn.dataset.originalLabel = 'Save Changes';
+      setButtonLoading(btn, true, 'Saving...');
+      try {
+        const res = await apiFetch(`${API_URL}/api/sales/${saleId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employee_name: document.getElementById('editSaleEmployee').value.trim(), description: document.getElementById('editSaleDescription').value.trim(), total_amount: parseFloat(document.getElementById('editSaleAmount').value), change_reason: document.getElementById('editSaleReason').value.trim() }) });
+        const data = await res.json();
+        if (!res.ok) return showInlineMessage('editSaleMsg', data.error || 'Failed to update sale.', false, 5000);
+        closeEditSaleModal();
+        showToast('success', data.message || 'Sale updated successfully.');
+        await Promise.all([loadSalesAdmin(), loadLedger()]);
+        broadcastAppEvent('finance:changed', { action: 'sale-updated', saleId });
+      } catch {
+        showInlineMessage('editSaleMsg', 'Connection error while updating sale.', false, 5000);
+      } finally { setButtonLoading(btn, false); }
+    });
+
+    subscribeAppEvent('finance:changed', () => {
+      loadLedger();
+      loadSalesAdmin();
     });
   </script>
 </body>
 </html>
-

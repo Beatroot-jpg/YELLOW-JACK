@@ -100,7 +100,7 @@
   <script>
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
-    const canEdit = ['Manager', 'Admin'].includes(user.role);
+    const canEdit = ['Manager', 'Admin', 'Owner'].includes(user.role);
 
     document.getElementById('currentUser').textContent = `${user?.full_name} · ${user?.role}`;
     if (canEdit) document.getElementById('addPanel').style.display = 'block';
@@ -149,19 +149,11 @@
       renderList(allEntries.filter(x => x.name.toLowerCase().includes(q) || (x.reason || '').toLowerCase().includes(q)));
     });
 
-    function showMsg(text, ok) {
-      const el = document.getElementById('addMsg');
-      el.textContent = text;
-      el.className = `ui-message ${ok ? 'ui-message--success' : 'ui-message--error'}`;
-      el.style.display = 'block';
-      setTimeout(() => { el.style.display = 'none'; }, 4000);
-    }
-
     document.getElementById('addBtn').addEventListener('click', async () => {
       const btn = document.getElementById('addBtn');
       const name = document.getElementById('addName').value.trim();
       const reason = document.getElementById('addReason').value.trim();
-      if (!name) { showMsg('Name is required', false); return; }
+      if (!name) { showInlineMessage('addMsg', 'Name is required', false); return; }
       btn.dataset.originalLabel = 'Add';
       setButtonLoading(btn, true, 'Adding...');
       try {
@@ -171,17 +163,17 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showMsg(`${name} added to blacklist`, true);
+          showInlineMessage('addMsg', `${name} added to blacklist`, true);
           showToast('success', `${name} added to blacklist.`);
           document.getElementById('addName').value = '';
           document.getElementById('addReason').value = '';
           loadBlacklist();
         } else {
-          showMsg(data.error || 'Failed', false);
+          showInlineMessage('addMsg', data.error || 'Failed', false);
           showToast('error', data.error || 'Failed to add blacklist entry.');
         }
       } catch {
-        showMsg('Connection error', false);
+        showInlineMessage('addMsg', 'Connection error', false);
         showToast('error', 'Connection error while adding blacklist entry.');
       } finally {
         setButtonLoading(btn, false);

@@ -61,8 +61,8 @@ Since your backend is in a subdirectory:
 3. Add these variables one by one:
 
 ```bash
-# Session Secret (generate a random string)
-SESSION_SECRET=your_super_secret_random_string_here_change_this
+# JWT Secret (generate a random string)
+JWT_SECRET=your_super_secret_random_string_here_change_this
 
 # Frontend URL (we'll update this later when frontend is deployed)
 FRONTEND_URL=http://localhost:8080
@@ -219,11 +219,11 @@ Railway automatically deploys when you push to GitHub:
 ✅ Admin user created
 
 Now you need to:
-1. **Deploy frontend** (Netlify or Railway static hosting)
+1. **Deploy the `frontend/` folder** (Netlify recommended)
 2. **Update `FRONTEND_URL`** in Railway environment variables
-3. **Add JavaScript to frontend** to call your Railway backend API
+3. **Set `frontend/config.js`** to your Railway backend URL
 
 Your backend URL: `https://your-railway-url.up.railway.app`
 
-Use this URL in your frontend `config.js` or API calls!
+Use this URL in `frontend/config.js`.
 

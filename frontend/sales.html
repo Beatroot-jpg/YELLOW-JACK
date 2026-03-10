@@ -8,6 +8,19 @@
   <style>
     /* Sales-specific styles only */
     .form-input::placeholder { color: rgba(254, 226, 80, 0.3); }
+    .sale-action-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .sale-edit-note { margin-top:6px; font-size:0.78rem; color:var(--text-muted); }
+    .sale-history-list { display:flex; flex-direction:column; gap:12px; margin-top:10px; max-height:55vh; overflow:auto; }
+    .sale-history-entry { border:1px solid var(--border-subtle); border-radius:14px; padding:14px; background:rgba(29, 18, 6, 0.88); }
+    .sale-history-entry__top { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .sale-history-entry__title { font-weight:700; color:var(--text-main); }
+    .sale-history-entry__meta { font-size:0.82rem; color:var(--text-muted); }
+    .sale-history-entry__reason { margin-top:8px; font-size:0.88rem; color:var(--accent-10); }
+    .sale-history-entry__grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-top:12px; }
+    .sale-history-card { border:1px solid var(--border-subtle); border-radius:10px; padding:10px; background:rgba(255,255,255,0.02); }
+    .sale-history-card__label { font-size:0.74rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+    .sale-history-card__line { font-size:0.88rem; color:var(--text-main); margin-bottom:4px; }
+    .sale-history-badge { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:0.74rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:rgba(255, 196, 74, 0.16); color:var(--accent-10); }
   </style>
 </head>
 <body>
@@ -117,7 +130,7 @@
             <button type="submit" form="saleForm" class="button-primary" id="saveBtn">Save Sale</button>
           </div>
           <p class="panel-subtitle panel-note">
-            Each sale gives the worker a 10% cut and 90% goes to the business. This logic will be wired in later.
+            Each sale automatically gives the worker a 10% cut and 90% goes to the business. Admin corrections, restores, and payouts are managed from the Admin page.
           </p>
         </div>
 
@@ -158,11 +171,12 @@
                   <th>Time</th>
                   <th>Money Earnt</th>
                   <th>Business Made</th>
+                  <th>Admin</th>
                 </tr>
               </thead>
               <tbody id="salesTableBody">
-                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="8" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(8,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="8" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(8,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -198,7 +212,7 @@
             </table>
           </div>
           <div class="table-meta">
-            <span>10% of each sale accumulated per staff member. Managers/Admins can pay out.</span>
+            <span>10% of each sale accumulated per staff member. Payout controls now live in the Admin page.</span>
           </div>
         </div>
       </section>
@@ -248,7 +262,6 @@
   <script src="config.js"></script>
   <script src="shared.js"></script>
   <script>
-    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const currentUser = getUser();
     if (!currentUser) throw new Error('Not authenticated');
     document.getElementById('currentUser').textContent = `${currentUser.full_name} · ${currentUser.role}`;
@@ -282,35 +295,49 @@
       } catch (e) { console.error('Failed to load roster:', e); }
     }
 
+    async function loadSalesSummary() {
+      try {
+        const res = await apiFetch(`${API_URL}/api/analytics/summary`);
+        const data = await res.json();
+        document.getElementById('stat-tonight').textContent = fmtCurrency(data.today?.total || 0);
+        document.getElementById('stat-count').textContent = data.all_time?.count || 0;
+        document.getElementById('stat-revenue').textContent = fmtCurrency(data.all_time?.business || 0);
+      } catch (e) {
+        console.error('Failed to load sales summary:', e);
+        document.getElementById('stat-tonight').textContent = '—';
+        document.getElementById('stat-count').textContent = '—';
+        document.getElementById('stat-revenue').textContent = '—';
+      }
+    }
+
     async function loadSales(page = 1) {
       try {
-        document.getElementById('salesTableBody').innerHTML = createTableSkeleton(7, 4);
+        document.getElementById('salesTableBody').innerHTML = createTableSkeleton(8, 4);
         const res = await apiFetch(`${API_URL}/api/sales?${buildSalesQuery(page)}`);
         const data = await res.json();
         const sales = data.sales || [];
         totalPages = data.pagination?.pages || 1;
         currentPage = page;
 
-        const today = new Date().toISOString().split('T')[0];
-        const tonight = sales.filter(s => s.created_at?.startsWith(today))
-          .reduce((sum, s) => sum + parseFloat(s.total_amount || 0), 0);
-        document.getElementById('stat-tonight').textContent = fmt(tonight);
-        document.getElementById('stat-count').textContent = data.pagination?.total ?? sales.length;
-
         const tbody = document.getElementById('salesTableBody');
+        const canManageSales = canAccessAdmin(currentUser);
         if (!sales.length) {
-          tbody.innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '⟡', title: 'No sales recorded yet', description: 'Log your first sale to start tracking revenue and commission.', actionLabel: 'Add sale now', actionHref: '#saleForm' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8">${createEmptyState({ icon: '⟡', title: 'No sales recorded yet', description: 'Log your first sale to start tracking revenue and commission.', actionLabel: 'Add sale now', actionHref: '#saleForm' })}</td></tr>`;
         } else {
           tbody.innerHTML = sales.map(s => {
             const dt = new Date(s.created_at);
+            const updatedAtMs = s.updated_at ? new Date(s.updated_at).getTime() : 0;
+            const createdAtMs = s.created_at ? new Date(s.created_at).getTime() : 0;
+            const wasEdited = updatedAtMs - createdAtMs > 1000;
             return `<tr>
               <td>${s.employee_name}</td>
               <td>${s.description || '—'}</td>
-              <td class="amount">${fmt(s.total_amount)}</td>
+              <td class="amount">${fmtCurrency(s.total_amount)}</td>
               <td class="small">${dt.toLocaleDateString()}</td>
               <td class="small">${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</td>
-              <td class="amount">${fmt(s.money_earnt)}</td>
-              <td class="amount">${fmt(s.business_made)}</td>
+              <td class="amount">${fmtCurrency(s.money_earnt)}</td>
+              <td class="amount">${fmtCurrency(s.business_made)}</td>
+              <td>${canManageSales ? `<a href="admin.html#salesAdminPanel" class="button-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Manage in Admin</a>${wasEdited ? `<div class="sale-edit-note">Edited${s.updated_by ? ` by ${s.updated_by}` : ''}</div>` : ''}` : '—'}</td>
             </tr>`;
           }).join('');
         }
@@ -323,7 +350,7 @@
         updateSalesFilterMeta();
       } catch (e) {
         console.error('Failed to load sales:', e);
-        document.getElementById('salesTableBody').innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '!', title: 'Unable to load sales', description: 'Please refresh and try again.' })}</td></tr>`;
+        document.getElementById('salesTableBody').innerHTML = `<tr><td colspan="8">${createEmptyState({ icon: '!', title: 'Unable to load sales', description: 'Please refresh and try again.' })}</td></tr>`;
         showToast('error', 'Failed to load sales history.');
       }
     }
@@ -335,11 +362,8 @@
         const data = await res.json();
         const ledger = data.ledger || [];
 
-        const totalRevenue = ledger.reduce((sum, e) => sum + parseFloat(e.total_money_earnt || 0), 0);
-        document.getElementById('stat-revenue').textContent = fmt(totalRevenue / 0.1 * 0.9);
-
         const tbody = document.getElementById('ledgerTableBody');
-        const canPay = ['Manager', 'Admin'].includes(currentUser?.role);
+        const canManagePayouts = canAccessAdmin(currentUser);
         if (!ledger.length) {
           tbody.innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Staff earnings will appear here once sales are logged.', actionLabel: 'Log a sale', actionHref: '#saleForm' })}</td></tr>`;
         } else {
@@ -347,8 +371,8 @@
             <tr>
               <td>${e.employee_name}</td>
               <td class="small">${e.deals_count} deals</td>
-              <td class="amount">${fmt(e.total_money_earnt)}</td>
-              <td>${canPay ? `<button class="button-secondary" onclick="payStaff('${e.employee_name}', ${e.total_money_earnt})">Pay ${fmt(e.total_money_earnt)}</button>` : '—'}</td>
+              <td class="amount">${fmtCurrency(e.total_money_earnt)}</td>
+              <td>${canManagePayouts ? `<a href="admin.html" class="button-secondary" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Manage in Admin</a>` : '—'}</td>
             </tr>`).join('');
         }
       } catch (e) {
@@ -358,22 +382,10 @@
       }
     }
 
-    async function payStaff(name, amount) {
-      if (!confirm(`Pay ${fmt(amount)} to ${name}?`)) return;
-      try {
-        const res = await apiFetch(`${API_URL}/api/ledger/pay`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employee_name: name, amount })
-        });
-        if (res.ok) {
-          showToast('success', `Paid ${fmt(amount)} to ${name}.`);
-          loadLedger();
-        } else {
-          showToast('error', 'Payment failed.');
-        }
-      } catch {
-        showToast('error', 'Connection error while processing payment.');
+    async function refreshFinanceViews(page = currentPage) {
+      await Promise.all([loadSalesSummary(), loadSales(page), loadLedger()]);
+      if (currentPage > totalPages) {
+        await loadSales(totalPages || 1);
       }
     }
 
@@ -395,7 +407,8 @@
         if (res.ok) {
           e.target.reset();
           showToast('success', 'Sale saved successfully.');
-          await Promise.all([loadSales(1), loadLedger()]);
+          await refreshFinanceViews(1);
+          broadcastAppEvent('finance:changed', { action: 'sale-created' });
         } else {
           const err = await res.json();
           showToast('error', err.error || 'Failed to save sale.');
@@ -443,6 +456,49 @@
       return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     }
 
+    async function submitClockAction(employeeName, action, button, options = {}) {
+      const labels = {
+        'clock-in': 'Clocking In...',
+        'clock-out': 'Clocking Out...'
+      };
+
+      if (button) {
+        button.dataset.originalLabel = button.textContent;
+        setButtonLoading(button, true, labels[action] || 'Working...');
+      }
+
+      try {
+        const res = await apiFetch(`${API_URL}/api/timesheets/${action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_name: employeeName })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showInlineMessage('clockMsg', data.message, true);
+          showToast('success', data.message);
+          if (options.clearInput) {
+            document.getElementById('clock-employee').value = '';
+          }
+          await loadActiveShifts();
+          return true;
+        }
+
+        showInlineMessage('clockMsg', data.error || 'Failed', false);
+        showToast('error', data.error || 'Failed to update clock status.');
+        return false;
+      } catch {
+        showInlineMessage('clockMsg', 'Connection error', false);
+        showToast('error', 'Connection error while updating clock status.');
+        return false;
+      } finally {
+        if (button) {
+          setButtonLoading(button, false);
+        }
+      }
+    }
+
     async function loadActiveShifts() {
       try {
         document.getElementById('activeCount').textContent = 'Loading...';
@@ -467,13 +523,24 @@
         activeTimers = {};
 
         container.innerHTML = active.map(a => `
-          <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(100,55,17,0.5);padding:10px 14px;border-radius:8px;border:1px solid var(--border-subtle)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;background:rgba(100,55,17,0.5);padding:10px 14px;border-radius:8px;border:1px solid var(--border-subtle)">
             <div>
               <div style="font-weight:700;color:var(--text-main)">${a.employee_name}</div>
               <div style="font-size:0.78rem;color:var(--text-muted)">Since ${new Date(a.clock_in).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
             </div>
-            <div id="timer-${a.id}" style="font-size:1.1rem;font-weight:700;color:var(--accent-10);font-variant-numeric:tabular-nums">${fmtElapsed(a.clock_in)}</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;">
+              <div id="timer-${a.id}" style="font-size:1.1rem;font-weight:700;color:var(--accent-10);font-variant-numeric:tabular-nums">${fmtElapsed(a.clock_in)}</div>
+              <button type="button" class="button-secondary active-shift-out-btn" data-employee="${encodeURIComponent(a.employee_name)}" style="white-space:nowrap">Clock Out</button>
+            </div>
           </div>`).join('');
+
+        container.querySelectorAll('.active-shift-out-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const employeeName = decodeURIComponent(btn.dataset.employee || '');
+            if (!employeeName) return;
+            await submitClockAction(employeeName, 'clock-out', btn);
+          });
+        });
 
         // Start live timers
         active.forEach(a => {
@@ -491,14 +558,6 @@
         document.getElementById('activeShifts').innerHTML = createEmptyState({ icon: '!', title: 'Shift status unavailable', description: 'We could not load active shift data.' });
         showToast('error', 'Failed to load active shift data.');
       }
-    }
-
-    function showClockMsg(text, success = true) {
-      const el = document.getElementById('clockMsg');
-      el.textContent = text;
-      el.className = `ui-message ${success ? 'ui-message--success' : 'ui-message--error'}`;
-      el.style.display = 'block';
-      setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
 
     async function updateClockBtn() {
@@ -521,38 +580,19 @@
     document.getElementById('clockBtn').addEventListener('click', async () => {
       const name = document.getElementById('clock-employee').value.trim();
       const btn = document.getElementById('clockBtn');
-      if (!name) { showClockMsg('Please select a staff member', false); return; }
+      if (!name) { showInlineMessage('clockMsg', 'Please select a staff member', false); return; }
 
       const isClockin = btn.textContent.includes('In');
-      const endpoint = isClockin ? 'clock-in' : 'clock-out';
-      btn.dataset.originalLabel = btn.textContent;
-      setButtonLoading(btn, true, isClockin ? 'Clocking In...' : 'Clocking Out...');
-
-      try {
-        const res = await apiFetch(`${API_URL}/api/timesheets/${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ employee_name: name })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showClockMsg(data.message, true);
-          showToast('success', data.message);
-          document.getElementById('clock-employee').value = '';
-          await loadActiveShifts();
-        } else {
-          showClockMsg(data.error || 'Failed', false);
-          showToast('error', data.error || 'Failed to update clock status.');
-        }
-      } catch {
-        showClockMsg('Connection error', false);
-        showToast('error', 'Connection error while updating clock status.');
-      }
-
-      setButtonLoading(btn, false);
+      await submitClockAction(name, isClockin ? 'clock-in' : 'clock-out', btn, { clearInput: true });
     });
 
-    Promise.all([loadRoster(), loadSales(1), loadLedger(), loadActiveShifts()]);
+    subscribeAppEvent('finance:changed', () => {
+      loadSalesSummary();
+      loadSales(currentPage);
+      loadLedger();
+    });
+
+    Promise.all([loadRoster(), loadSalesSummary(), loadSales(1), loadLedger(), loadActiveShifts()]);
 
     // Populate clock employee list from same roster
     async function populateClockRoster() {

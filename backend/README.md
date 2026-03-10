@@ -1,187 +1,104 @@
 # Yellow Jack Backend API
 
-Backend server for the Yellow Jack bar tracker system with username/password authentication.
+Express/PostgreSQL backend for the Yellow Jack operations tracker.
 
-## Features
+## Current Stack
 
-- ✅ Username/password authentication (no Discord)
-- ✅ Role-based access control (Staff, Manager, Admin)
-- ✅ Sales tracking with 10% commission calculation
-- ✅ Employee ledger system
-- ✅ Roster management
-- ✅ Blacklist functionality
-- ✅ Payment history tracking
-- ✅ PostgreSQL database
+- Node.js + Express
+- PostgreSQL
+- bcrypt for password hashing
+- JWT for authentication
+- CORS for frontend access control
 
-## Tech Stack
+## Current Environment Variables
 
-- **Node.js** + **Express.js** - Backend framework
-- **PostgreSQL** - Database
-- **bcrypt** - Password hashing
-- **express-session** - Session management
-- **CORS** - Cross-origin support
-
-## Setup Instructions
-
-### 1. Install Dependencies
-
-```bash
-cd backend
-npm install
-```
-
-### 2. Set Up PostgreSQL Database
-
-Install PostgreSQL if you haven't already, then create a database:
-
-```sql
-CREATE DATABASE yellow_jack;
-```
-
-### 3. Configure Environment Variables
-
-Copy `.env.example` to `.env` and update with your settings:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
-```
+```text
 PGHOST=localhost
 PGPORT=5432
 PGDATABASE=yellow_jack
 PGUSER=postgres
 PGPASSWORD=your_password
-
 PORT=3000
 NODE_ENV=development
-SESSION_SECRET=generate_a_random_secret_here
+JWT_SECRET=generate_a_random_secret_here
+FRONTEND_URL=http://localhost:8080
 ```
 
-### 4. Start the Server
+## Startup
 
-Development mode (with auto-reload):
 ```bash
+cd backend
+npm install
 npm run dev
 ```
 
-Production mode:
-```bash
-npm start
-```
+The server initializes its database tables on startup.
 
-The server will:
-- Initialize database tables automatically
-- Run on `http://localhost:3000`
+## Auth Notes
 
-### 5. Create First Admin User
+- The first registered user becomes **Admin** automatically.
+- After the first user exists, `POST /auth/register` requires an authenticated **Admin**.
+- Frontend clients send `Authorization: Bearer <token>`.
 
-The first user registered will automatically become an Admin. Use a tool like Postman or curl:
+## Main Routes
 
-```bash
-curl -X POST http://localhost:3000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "admin",
-    "password": "your_secure_password",
-    "full_name": "Admin User"
-  }'
-```
+### Health
+- `GET /`
 
-## API Endpoints
+### Auth
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `GET /auth/check`
+- `GET /auth/user`
 
-### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - Login
-- `POST /auth/logout` - Logout
-- `GET /auth/user` - Get current user
+### Analytics
+- `GET /api/analytics/summary`
 
 ### Sales
-- `GET /api/sales?page=1&limit=10` - Get sales (paginated)
-- `POST /api/sales` - Create new sale
-- `DELETE /api/sales/:id` - Delete sale (Manager/Admin)
+- `GET /api/sales?page=1&limit=10`
+- `POST /api/sales`
+- `DELETE /api/sales/:id`
 
-### Ledger
-- `GET /api/ledger` - Get employee ledger
-- `POST /api/ledger/pay` - Record payment (Manager/Admin)
+### Ledger / Payments
+- `GET /api/ledger`
+- `GET /api/ledger/:employee_name`
+- `POST /api/ledger/pay`
+- `GET /api/payments`
+
+### Timesheets
+- `GET /api/timesheets`
+- `GET /api/timesheets/active`
+- `GET /api/timesheets/weekly`
+- `POST /api/timesheets/clock-in`
+- `POST /api/timesheets/clock-out`
 
 ### Roster
-- `GET /api/roster` - Get all roster members
-- `POST /api/roster` - Add roster member (Manager/Admin)
-- `PUT /api/roster/:id` - Update roster member (Manager/Admin)
-- `DELETE /api/roster/:id` - Delete roster member (Manager/Admin)
+- `GET /api/roster`
+- `POST /api/roster`
+- `PUT /api/roster/:id`
+- `DELETE /api/roster/:id`
 
 ### Blacklist
-- `GET /api/blacklist` - Get blacklist
-- `POST /api/blacklist` - Add to blacklist (Manager/Admin)
-- `DELETE /api/blacklist/:id` - Remove from blacklist (Manager/Admin)
+- `GET /api/blacklist`
+- `POST /api/blacklist`
+- `DELETE /api/blacklist/:id`
 
-### Payments
-- `GET /api/payments` - Get payment history
+### Users
+- `GET /api/users`
+- `PUT /api/users/:id`
+- `DELETE /api/users/:id`
 
-## Database Schema
+## Role Summary
 
-### users
-- Authentication and role management
-- Roles: Staff, Manager, Admin
+- **Staff**: create/view sales, view operational data, use shift flows
+- **Manager**: roster + blacklist management, ledger payments, sales deletion
+- **Admin**: all manager permissions plus user management
 
-### roster
-- Staff member records
-- Status: Active, Inactive, On Leave
+## Deployment Notes
 
-### sales
-- Sales transactions
-- Automatic 10%/90% split calculation
-
-### employee_ledger
-- Commission tracking per employee
-- Auto-updated on sales
-
-### payment_history
-- Records when staff are paid
-
-### blacklist
-- Banned customers/individuals
-
-## Role Permissions
-
-### Staff
-- View sales, roster, ledger
-- Create sales
-- View blacklist
-
-### Manager
-- All Staff permissions
-- Delete sales
-- Manage roster
-- Manage blacklist
-- Record payments
-
-### Admin
-- All Manager permissions
-- Create new users
-- Full system access
-
-## Development
-
-Run with auto-reload:
-```bash
-npm run dev
-```
-
-## Production Deployment
-
-1. Set `NODE_ENV=production` in `.env`
-2. Use a strong `SESSION_SECRET`
-3. Set up PostgreSQL on your hosting platform
-4. Deploy to Railway, Heroku, or similar
-5. Update `FRONTEND_URL` in CORS settings
-
-## Notes
-
-- First registered user becomes Admin automatically
-- Sessions last 24 hours
-- All passwords are hashed with bcrypt
-- Database tables are created automatically on first run
+- Set a strong `JWT_SECRET`
+- Set `FRONTEND_URL` to the deployed frontend origin
+- Deploy `backend/` as the backend service
+- Keep plaintext test credentials out of the repository
 

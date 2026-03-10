@@ -119,7 +119,7 @@
   <script>
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
-    const canEdit = ['Manager', 'Admin'].includes(user.role);
+    const canEdit = ['Manager', 'Admin', 'Owner'].includes(user.role);
 
     document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
     if (canEdit) {
@@ -162,20 +162,12 @@
       }
     }
 
-    function showMsg(id, text, ok) {
-      const el = document.getElementById(id);
-      el.textContent = text;
-      el.className = `ui-message ${ok ? 'ui-message--success' : 'ui-message--error'}`;
-      el.style.display = 'block';
-      setTimeout(() => { el.style.display = 'none'; }, 4000);
-    }
-
     document.getElementById('addBtn').addEventListener('click', async () => {
       const btn = document.getElementById('addBtn');
       const name = document.getElementById('addName').value.trim();
       const rank = document.getElementById('addRank').value.trim();
       const date_joined = document.getElementById('addDate').value;
-      if (!name) { showMsg('addMsg', 'Name is required', false); return; }
+      if (!name) { showInlineMessage('addMsg', 'Name is required', false); return; }
       btn.dataset.originalLabel = 'Add';
       setButtonLoading(btn, true, 'Adding...');
       try {
@@ -185,18 +177,18 @@
         });
         const data = await res.json();
         if (res.ok) {
-          showMsg('addMsg', 'Staff member added!', true);
+          showInlineMessage('addMsg', 'Staff member added!', true);
           showToast('success', `${name} added to the roster.`);
           document.getElementById('addName').value = '';
           document.getElementById('addRank').value = '';
           document.getElementById('addDate').value = '';
           loadRoster();
         } else {
-          showMsg('addMsg', data.error || 'Failed', false);
+          showInlineMessage('addMsg', data.error || 'Failed', false);
           showToast('error', data.error || 'Failed to add staff member.');
         }
       } catch {
-        showMsg('addMsg', 'Connection error', false);
+        showInlineMessage('addMsg', 'Connection error', false);
         showToast('error', 'Connection error while adding staff member.');
       } finally {
         setButtonLoading(btn, false);

@@ -528,14 +528,13 @@
   <script src="config.js"></script>
   <script src="shared.js"></script>
   <script>
-    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
 
     document.getElementById('userName').textContent = user.full_name;
     document.getElementById('userRole').textContent = user.role;
     document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.full_name}`;
-    document.getElementById('welcomeSubcopy').textContent = user.role === 'Admin'
+    document.getElementById('welcomeSubcopy').textContent = ['Admin', 'Owner'].includes(user.role)
       ? 'Manage operations, staffing, and access control from one warm control hub.'
       : user.role === 'Manager'
         ? 'Keep sales, shifts, and team activity moving smoothly through the night.'
@@ -549,8 +548,8 @@
         ]);
         const summary = await summaryRes.json();
         const shifts = await shiftsRes.json();
-        document.getElementById('dashTonight').textContent = fmt(summary.today?.total || 0);
-        document.getElementById('dashRevenue').textContent = fmt(summary.all_time?.business || 0);
+        document.getElementById('dashTonight').textContent = fmtCurrency(summary.today?.total || 0);
+        document.getElementById('dashRevenue').textContent = fmtCurrency(summary.all_time?.business || 0);
         document.getElementById('dashStaff').textContent = summary.active_staff || 0;
         document.getElementById('dashShifts').textContent = (shifts.active || []).length;
       } catch (e) {
@@ -564,6 +563,7 @@
     }
 
     loadDashboardStats();
+    subscribeAppEvent('finance:changed', () => loadDashboardStats());
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       await apiFetch(`${API_URL}/auth/logout`, { method: 'POST' }).catch(() => {});

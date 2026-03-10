@@ -37,9 +37,11 @@ async function initializeDatabase() {
         role VARCHAR(50) DEFAULT 'Staff',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        CHECK (role IN ('Staff', 'Manager', 'Admin'))
+        CHECK (role IN ('Staff', 'Manager', 'Admin', 'Owner'))
       )
     `);
+    await client.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check`);
+    await client.query(`ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('Staff', 'Manager', 'Admin', 'Owner'))`);
 
     // 2. Roster table - staff members
     await client.query(`
@@ -69,6 +71,29 @@ async function initializeDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS created_by VARCHAR(255)`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS updated_by VARCHAR(255)`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255)`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS deleted_reason TEXT`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS sale_revisions (
+        id SERIAL PRIMARY KEY,
+        sale_id INTEGER NOT NULL,
+        action VARCHAR(20) NOT NULL,
+        changed_by VARCHAR(255) NOT NULL,
+        change_reason TEXT,
+        before_state JSONB,
+        after_state JSONB,
+        changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        CHECK (action IN ('CREATE', 'UPDATE', 'DELETE', 'RESTORE'))
+      )
+    `);
+    await client.query(`ALTER TABLE sale_revisions DROP CONSTRAINT IF EXISTS sale_revisions_action_check`);
+    await client.query(`ALTER TABLE sale_revisions ADD CONSTRAINT sale_revisions_action_check CHECK (action IN ('CREATE', 'UPDATE', 'DELETE', 'RESTORE'))`);
 
     // 4. Employee ledger - commission tracking
     await client.query(`

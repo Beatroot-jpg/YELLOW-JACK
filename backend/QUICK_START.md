@@ -67,7 +67,7 @@ PGPASSWORD=YOUR_POSTGRES_PASSWORD_HERE
 
 PORT=3000
 NODE_ENV=development
-SESSION_SECRET=my_super_secret_key_change_in_production
+JWT_SECRET=my_super_secret_key_change_in_production
 ```
 
 **IMPORTANT:** Replace `YOUR_POSTGRES_PASSWORD_HERE` with the password you set during PostgreSQL installation!
@@ -173,8 +173,8 @@ curl -X POST http://localhost:3000/auth/login `
 
 Now you can:
 1. **Test API endpoints** using curl or Postman
-2. **Connect your frontend** HTML files to the API
-3. **Add JavaScript** to make the pages dynamic
+2. **Point `frontend/config.js`** at the API
+3. **Serve or deploy the `frontend/` app**
 
 See `README.md` for full API documentation.
 

@@ -1,5 +1,6 @@
-
 # Los Santos Sanitation - Development Reference
+
+> Historical reference only. This file preserves patterns from the source/reference project and may include session/cookie-era examples that do **not** reflect the current Yellow Jack architecture. For the active app, use `frontend/`, `backend/server.js`, `frontend/shared.js`, and the current setup/deployment docs.
 
 **Project Type:** Business Management & Tracking System
 **Created:** December 2025

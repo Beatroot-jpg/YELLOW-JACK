@@ -175,7 +175,6 @@
   <script src="config.js"></script>
   <script src="shared.js"></script>
   <script>
-    const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const user = getUser();
     if (!user) throw new Error('Not authenticated');
     document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
@@ -184,10 +183,10 @@
       try {
         const res = await apiFetch(`${API_URL}/api/analytics/summary`);
         const data = await res.json();
-        document.getElementById('stat-tonight').textContent = fmt(data.today?.total || 0);
+        document.getElementById('stat-tonight').textContent = fmtCurrency(data.today?.total || 0);
         document.getElementById('stat-total-count').textContent = data.all_time?.count || 0;
-        document.getElementById('stat-total-revenue').textContent = fmt(data.all_time?.business || 0);
-        document.getElementById('stat-total-earnt').textContent = fmt(data.all_time?.staff_earnt || 0);
+        document.getElementById('stat-total-revenue').textContent = fmtCurrency(data.all_time?.business || 0);
+        document.getElementById('stat-total-earnt').textContent = fmtCurrency(data.all_time?.staff_earnt || 0);
         document.getElementById('stat-staff').textContent = data.active_staff || 0;
 
         const buildList = (id, entries) => {
@@ -200,7 +199,7 @@
             <li class="leaderboard-item">
               <span class="leaderboard-rank">#${i + 1}</span>
               <span class="leaderboard-name">${e.employee_name}</span>
-              <span class="leaderboard-value">${fmt(e.total_money_earnt)} · ${e.deals_count} deals</span>
+              <span class="leaderboard-value">${fmtCurrency(e.total_money_earnt)} · ${e.deals_count} deals</span>
             </li>`).join('');
         };
 
@@ -215,6 +214,7 @@
     }
 
     loadStats();
+    subscribeAppEvent('finance:changed', () => loadStats());
   </script>
 </body>
 </html>

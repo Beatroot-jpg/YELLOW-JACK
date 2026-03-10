@@ -33,3 +33,10 @@ build/
 *.tmp
 .cache/
 
+# Local test payloads / credential artifacts
+cookies.txt
+passwords and users.txt
+create-admin.json
+test-login.json
+YELLOW JACK/create-*.json
+
