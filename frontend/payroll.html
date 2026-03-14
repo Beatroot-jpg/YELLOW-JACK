@@ -14,6 +14,25 @@
     .summary-stat .val { font-size:1.3rem; font-weight:700; color:var(--accent-10); }
     .payroll-actions { display:flex; gap:8px; flex-wrap:wrap; }
     .payroll-note { margin-top:8px; font-size:0.8rem; color:var(--text-muted); }
+    .payroll-inline-input { min-width:90px; width:100%; }
+    .payroll-calc-cell { min-width:120px; }
+    .payroll-status-badge { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:0.72rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
+    .payroll-status-badge--saved { background:rgba(111,207,151,0.12); color:#6fcf97; }
+    .payroll-status-badge--pending { background:rgba(255,196,74,0.12); color:var(--accent-10); }
+    .payroll-history-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:12px; }
+    .payroll-history-card { border:1px solid var(--border-subtle); border-radius:12px; padding:12px; background:rgba(255,255,255,0.03); }
+    .payroll-history-card__label { font-size:0.74rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+    .payroll-history-card__value { font-size:1.1rem; font-weight:700; color:var(--text-main); }
+    .payroll-history-layout { display:flex; flex-direction:column; gap:16px; max-height:70vh; overflow:auto; }
+    .payroll-history-section { display:flex; flex-direction:column; gap:10px; }
+    .payroll-history-section h4 { font-size:0.82rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent-10); }
+    .payroll-history-list { display:flex; flex-direction:column; gap:10px; }
+    .payroll-history-entry { border:1px solid var(--border-subtle); border-radius:12px; padding:12px; background:rgba(255,255,255,0.025); }
+    .payroll-history-entry__top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+    .payroll-history-entry__title { font-weight:700; color:var(--text-main); }
+    .payroll-history-entry__meta { font-size:0.82rem; color:var(--text-muted); }
+    .payroll-history-entry__detail { margin-top:8px; font-size:0.88rem; color:var(--text-main); }
+    .payroll-history-entry__detail strong { color:var(--accent-10); }
   </style>
 </head>
 <body>
@@ -47,7 +66,7 @@
         <div class="section-intro__copy">
           <span class="section-intro__eyebrow">Weekly Overview</span>
           <h3 class="section-intro__title">Payroll-ready shift totals</h3>
-          <p class="section-intro__desc">Review weekly staff hours and shift counts before preparing payout decisions later on.</p>
+          <p class="section-intro__desc">Review weekly staff hours, convert them into owed hourly pay, and keep unpaid balances on record even after the week changes.</p>
         </div>
         <span class="section-intro__meta">Timesheet-backed summaries</span>
       </div>
@@ -64,9 +83,9 @@
         <div class="section-intro__copy">
           <span class="section-intro__eyebrow">Payroll Ledger</span>
           <h3 class="section-intro__title">Amounts owed and payout actions</h3>
-          <p class="section-intro__desc">Payroll now owns commission balances and payout processing. Sales stays focused on logging sales and shift time.</p>
+          <p class="section-intro__desc">Payroll now owns commission balances, saved hourly pay, and payout processing. Sales stays focused on logging sales and shift time.</p>
         </div>
-        <span class="section-intro__meta">Managers, Admins, and Owners can process payouts</span>
+        <span class="section-intro__meta">Saved weekly hours stay owed until paid</span>
       </div>
 
       <section class="analytics-row analytics-row--boards">
@@ -81,14 +100,16 @@
                 <tr>
                   <th>Name</th>
                   <th>Deals</th>
-                  <th>Outstanding</th>
+                  <th>Commission</th>
+                  <th>Hourly</th>
+                  <th>Total Owed</th>
                   <th>Last Payment</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="ledgerTableBody">
-                <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
-                <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="7" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(7,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -116,7 +137,7 @@
               </tbody>
             </table>
           </div>
-          <div class="payroll-note">This is the dedicated place for payroll payouts and commission balances.</div>
+          <div class="payroll-note">This is the dedicated place for payroll payouts and commission balances. Hourly rate is set when you save each week's pay.</div>
         </div>
       </section>
 
@@ -136,7 +157,7 @@
             </div>
           </div>
           <div class="toolbar-actions">
-            <span class="toolbar-meta">Hours grouped by employee</span>
+            <span class="toolbar-meta">Edit payable hours and set the hourly rate for that specific week before saving it into what they are owed</span>
           </div>
         </div>
         <div class="table-wrapper">
@@ -145,14 +166,18 @@
               <tr>
                 <th>Employee</th>
                 <th>Shifts</th>
-                <th>Total Hours</th>
-                <th>Total Minutes</th>
+                <th>Clocked Hours</th>
+                <th>Payable Hours</th>
+                <th>Hourly Rate</th>
+                <th>Hourly Amount</th>
+                <th>Status</th>
                 <th>Week Starting</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="weeklyTableBody">
-              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
-              <tr><td colspan="5" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(5,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div></div></td></tr>
+              <tr><td colspan="9" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(9,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+              <tr><td colspan="9" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(9,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -198,6 +223,17 @@
     </main>
   </div>
 
+  <div class="modal-overlay" id="payrollHistoryModal">
+    <div class="modal" style="max-width:980px; width:min(95vw, 980px);">
+      <h3 id="payrollHistoryTitle">Payroll History</h3>
+      <div class="payroll-note">Review current owed totals, saved weekly hourly entries, recent payments, and recent commission activity for this employee.</div>
+      <div id="payrollHistoryContent" class="payroll-history-layout"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" onclick="closePayrollHistoryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script src="config.js"></script>
   <script src="shared.js"></script>
   <script>
@@ -222,37 +258,262 @@
       return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getSelectedWeek() {
+      return document.getElementById('weekPicker').value;
+    }
+
+    function updatePayrollRowPreview(row) {
+      if (!row) return;
+      const hoursInput = row.querySelector('.payable-hours-input');
+      const rateInput = row.querySelector('.hourly-rate-input');
+      const preview = row.querySelector('.hourly-amount-preview');
+      if (!hoursInput || !rateInput || !preview) return;
+
+      const hours = Number(hoursInput.value || 0);
+      const rate = Number(rateInput.value || 0);
+      preview.textContent = fmtCurrency((Number.isFinite(hours) ? hours : 0) * (Number.isFinite(rate) ? rate : 0));
+    }
+
+    function bindWeeklyPayrollActions() {
+      document.querySelectorAll('.payable-hours-input, .hourly-rate-input').forEach(input => {
+        input.addEventListener('input', () => updatePayrollRowPreview(input.closest('tr')));
+      });
+
+      document.querySelectorAll('.save-hourly-btn').forEach(btn => {
+        btn.addEventListener('click', () => saveHourlyPayroll(btn));
+      });
+
+      document.querySelectorAll('.delete-hourly-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteHourlyPayroll(btn));
+      });
+    }
+
+    async function saveHourlyPayroll(button) {
+      if (!canManagePayroll) {
+        showToast('error', 'You do not have permission to manage payroll entries.');
+        return;
+      }
+
+      const row = button.closest('tr');
+      const payableHours = Number(row.querySelector('.payable-hours-input')?.value || 0);
+      const hourlyRate = Number(row.querySelector('.hourly-rate-input')?.value || 0);
+      const employee_name = decodeURIComponent(button.dataset.employee || '');
+      const week_start = button.dataset.weekStart || '';
+      const isUpdate = button.dataset.entryId;
+
+      button.dataset.originalLabel = isUpdate ? 'Update Owed' : 'Add to Owed';
+      setButtonLoading(button, true, isUpdate ? 'Updating...' : 'Saving...');
+
+      try {
+        const res = await apiFetch(`${API_URL}/api/payroll/hourly`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employee_name, week_start, payable_hours: payableHours, hourly_rate: hourlyRate })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          showToast('error', data.error || 'Failed to save hourly payroll entry.');
+          return;
+        }
+
+        showToast('success', `${employee_name}'s hourly pay was added to the owed total.`);
+        await Promise.all([loadWeekly(getSelectedWeek()), loadLedger(), loadPayments()]);
+        broadcastAppEvent('finance:changed', { action: 'hourly-payroll-saved', employee_name, week_start });
+      } catch {
+        showToast('error', 'Connection error while saving hourly payroll.');
+      } finally {
+        if (document.body.contains(button)) {
+          setButtonLoading(button, false);
+        }
+      }
+    }
+
+    async function deleteHourlyPayroll(button) {
+      if (!canManagePayroll) {
+        showToast('error', 'You do not have permission to manage payroll entries.');
+        return;
+      }
+
+      const employee_name = decodeURIComponent(button.dataset.employee || '');
+      const week_start = button.dataset.weekStart || '';
+      const entryId = button.dataset.entryId;
+      if (!entryId) return;
+      if (!confirm(`Remove the saved hourly payroll entry for ${employee_name} for week ${new Date(week_start).toLocaleDateString()}?`)) return;
+
+      button.dataset.originalLabel = 'Remove';
+      setButtonLoading(button, true, 'Removing...');
+
+      try {
+        const res = await apiFetch(`${API_URL}/api/payroll/hourly/${entryId}`, { method: 'DELETE' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showToast('error', data.error || 'Failed to remove hourly payroll entry.');
+          return;
+        }
+
+        showToast('success', `${employee_name}'s saved hourly pay was removed from owed totals.`);
+        await Promise.all([loadWeekly(getSelectedWeek()), loadLedger(), loadPayments()]);
+        broadcastAppEvent('finance:changed', { action: 'hourly-payroll-removed', employee_name, week_start });
+      } catch {
+        showToast('error', 'Connection error while removing hourly payroll.');
+      } finally {
+        if (document.body.contains(button)) {
+          setButtonLoading(button, false);
+        }
+      }
+    }
+
+    function renderPayrollHistoryCards(ledger = {}) {
+      const cards = [
+        ['Total Owed', fmtCurrency(ledger.total_money_earnt || 0)],
+        ['Commission Owed', fmtCurrency(ledger.commission_owed || 0)],
+        ['Hourly Owed', fmtCurrency(ledger.hourly_owed || 0)],
+        ['Deals Count', `${Number(ledger.deals_count || 0)} deals`],
+        ['Last Payment', ledger.last_payment_date ? new Date(ledger.last_payment_date).toLocaleDateString() : 'Never']
+      ];
+
+      return `<div class="payroll-history-grid">${cards.map(([label, value]) => `<div class="payroll-history-card"><div class="payroll-history-card__label">${escapeHtml(label)}</div><div class="payroll-history-card__value">${escapeHtml(value)}</div></div>`).join('')}</div>`;
+    }
+
+    function renderPayrollHistoryEntries(hourlyEntries = []) {
+      if (!hourlyEntries.length) {
+        return createEmptyState({ icon: '◌', title: 'No saved weekly hourly entries', description: 'Save weekly payable hours from the payroll table to keep them in the running owed total.' });
+      }
+
+      return `<div class="payroll-history-list">${hourlyEntries.map(entry => `
+        <div class="payroll-history-entry">
+          <div class="payroll-history-entry__top">
+            <div>
+              <div class="payroll-history-entry__title">Week of ${entry.week_start ? new Date(entry.week_start).toLocaleDateString() : 'Unknown week'}</div>
+              <div class="payroll-history-entry__meta">${entry.updated_at ? `Updated ${fmtDT(entry.updated_at)}` : 'Saved'}${entry.updated_by ? ` by ${escapeHtml(entry.updated_by)}` : ''}</div>
+            </div>
+            <span class="payroll-status-badge payroll-status-badge--saved">Saved</span>
+          </div>
+          <div class="payroll-history-entry__detail"><strong>Payable Hours:</strong> ${Number(entry.payable_hours || 0).toFixed(2)}h</div>
+          <div class="payroll-history-entry__detail"><strong>Rate used:</strong> ${fmtCurrency(entry.hourly_rate || 0)} per hour</div>
+          <div class="payroll-history-entry__detail"><strong>Hourly Amount:</strong> ${fmtCurrency(entry.hourly_amount || 0)}</div>
+        </div>`).join('')}</div>`;
+    }
+
+    function renderPayrollPayments(payments = []) {
+      if (!payments.length) {
+        return createEmptyState({ icon: '◌', title: 'No payments yet', description: 'Processed payroll payouts for this employee will appear here.' });
+      }
+
+      return `<div class="payroll-history-list">${payments.map(payment => `
+        <div class="payroll-history-entry">
+          <div class="payroll-history-entry__top">
+            <div>
+              <div class="payroll-history-entry__title">${fmtCurrency(payment.amount_paid || 0)} paid</div>
+              <div class="payroll-history-entry__meta">${payment.paid_at ? fmtDT(payment.paid_at) : 'Unknown date'}${payment.paid_by ? ` • by ${escapeHtml(payment.paid_by)}` : ''}</div>
+            </div>
+          </div>
+        </div>`).join('')}</div>`;
+    }
+
+    function renderPayrollSales(sales = []) {
+      if (!sales.length) {
+        return createEmptyState({ icon: '◌', title: 'No recent sales found', description: 'Recent commission activity will appear here when sales are logged.' });
+      }
+
+      return `<div class="payroll-history-list">${sales.slice(0, 10).map(sale => `
+        <div class="payroll-history-entry">
+          <div class="payroll-history-entry__top">
+            <div>
+              <div class="payroll-history-entry__title">${escapeHtml(sale.description || 'Sale')}</div>
+              <div class="payroll-history-entry__meta">${sale.created_at ? fmtDT(sale.created_at) : 'Unknown date'}</div>
+            </div>
+            <span class="payroll-status-badge payroll-status-badge--pending">${fmtCurrency(sale.money_earnt || 0)} commission</span>
+          </div>
+          <div class="payroll-history-entry__detail"><strong>Total Sale:</strong> ${fmtCurrency(sale.total_amount || 0)}</div>
+        </div>`).join('')}</div>`;
+    }
+
+    async function openPayrollHistory(employeeName) {
+      const safeName = String(employeeName || '').trim();
+      if (!safeName) return;
+
+      document.getElementById('payrollHistoryTitle').textContent = `Payroll History · ${safeName}`;
+      document.getElementById('payrollHistoryContent').innerHTML = createActiveShiftSkeleton(4);
+      document.getElementById('payrollHistoryModal').classList.add('open');
+
+      try {
+        const res = await apiFetch(`${API_URL}/api/ledger/${encodeURIComponent(safeName)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          document.getElementById('payrollHistoryContent').innerHTML = createEmptyState({ icon: '!', title: 'History unavailable', description: data.error || 'We could not load payroll history right now.' });
+          return;
+        }
+
+        document.getElementById('payrollHistoryContent').innerHTML = `
+          ${renderPayrollHistoryCards(data.ledger)}
+          <div class="payroll-history-section">
+            <h4>Saved Weekly Hourly Entries</h4>
+            ${renderPayrollHistoryEntries(data.hourly_entries || [])}
+          </div>
+          <div class="payroll-history-section">
+            <h4>Recent Payments</h4>
+            ${renderPayrollPayments(data.payments || [])}
+          </div>
+          <div class="payroll-history-section">
+            <h4>Recent Commission Activity</h4>
+            ${renderPayrollSales(data.sales || [])}
+          </div>`;
+      } catch {
+        document.getElementById('payrollHistoryContent').innerHTML = createEmptyState({ icon: '!', title: 'History unavailable', description: 'Connection error while loading payroll history.' });
+      }
+    }
+
+    function closePayrollHistoryModal() {
+      document.getElementById('payrollHistoryModal').classList.remove('open');
+    }
+
     async function loadLedger() {
       try {
-        document.getElementById('ledgerTableBody').innerHTML = createTableSkeleton(5, 4);
+        document.getElementById('ledgerTableBody').innerHTML = createTableSkeleton(7, 4);
         const res = await apiFetch(`${API_URL}/api/ledger`);
         const data = await res.json();
         const ledger = data.ledger || [];
         const tbody = document.getElementById('ledgerTableBody');
         const totalOutstanding = ledger.reduce((sum, item) => sum + Number(item.total_money_earnt || 0), 0);
         document.getElementById('outstandingOwed').textContent = fmtCurrency(totalOutstanding);
-        document.getElementById('ledgerMeta').textContent = ledger.length ? `${ledger.length} staff member${ledger.length === 1 ? '' : 's'} currently owed commission` : 'No outstanding commission entries';
+        document.getElementById('ledgerMeta').textContent = ledger.length ? `${ledger.length} staff member${ledger.length === 1 ? '' : 's'} currently owed across commissions and hourly payroll` : 'No outstanding payroll entries';
 
         if (!ledger.length) {
-          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Outstanding commission will appear here once sales are logged.', actionLabel: 'Open Sales', actionHref: 'sales.html' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '◌', title: 'No ledger entries yet', description: 'Commission and saved hourly pay will appear here once payroll is recorded.', actionLabel: 'Open Sales', actionHref: 'sales.html' })}</td></tr>`;
           return;
         }
 
         tbody.innerHTML = ledger.map(entry => `
           <tr>
-            <td>${entry.employee_name}</td>
+            <td>${escapeHtml(entry.employee_name)}</td>
             <td class="small">${entry.deals_count} deals</td>
+            <td class="amount">${fmtCurrency(entry.commission_owed || 0)}</td>
+            <td class="amount">${fmtCurrency(entry.hourly_owed || 0)}</td>
             <td class="amount">${fmtCurrency(entry.total_money_earnt)}</td>
             <td class="small">${entry.last_payment_date ? new Date(entry.last_payment_date).toLocaleDateString() : 'Never'}</td>
-            <td>${canManagePayroll ? `<div class="payroll-actions"><button type="button" class="button-secondary pay-ledger-btn" data-name="${encodeURIComponent(entry.employee_name)}" data-amount="${entry.total_money_earnt}">Pay ${fmtCurrency(entry.total_money_earnt)}</button></div>` : '<span class="small" style="color:var(--text-muted)">View only</span>'}</td>
+            <td><div class="payroll-actions"><button type="button" class="button-secondary review-ledger-btn" data-name="${encodeURIComponent(entry.employee_name)}">Review</button>${canManagePayroll ? `<button type="button" class="button-secondary pay-ledger-btn" data-name="${encodeURIComponent(entry.employee_name)}" data-amount="${entry.total_money_earnt}">Pay Full ${fmtCurrency(entry.total_money_earnt)}</button>` : ''}</div></td>
           </tr>`).join('');
 
+        document.querySelectorAll('.review-ledger-btn').forEach(btn => {
+          btn.addEventListener('click', () => openPayrollHistory(decodeURIComponent(btn.dataset.name)));
+        });
         document.querySelectorAll('.pay-ledger-btn').forEach(btn => {
           btn.addEventListener('click', () => payStaff(decodeURIComponent(btn.dataset.name), Number(btn.dataset.amount)));
         });
       } catch (e) {
         console.error('Failed to load ledger:', e);
-        document.getElementById('ledgerTableBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load ledger', description: 'Please refresh and try again.' })}</td></tr>`;
+        document.getElementById('ledgerTableBody').innerHTML = `<tr><td colspan="7">${createEmptyState({ icon: '!', title: 'Unable to load ledger', description: 'Please refresh and try again.' })}</td></tr>`;
         document.getElementById('ledgerMeta').textContent = 'Unable to load payroll ledger.';
         document.getElementById('outstandingOwed').textContent = '—';
         showToast('error', 'Failed to load payroll ledger.');
@@ -305,7 +566,7 @@
         }
 
         showToast('success', `Paid ${fmtCurrency(amount)} to ${name}.`);
-        await Promise.all([loadLedger(), loadPayments(), loadWeekly()]);
+        await Promise.all([loadLedger(), loadPayments(), loadWeekly(getSelectedWeek())]);
         broadcastAppEvent('finance:changed', { action: 'ledger-paid', employee_name: name });
       } catch {
         showToast('error', 'Connection error while processing payment.');
@@ -314,7 +575,7 @@
 
     async function loadWeekly(weekStart = '') {
       try {
-        document.getElementById('weeklyTableBody').innerHTML = createTableSkeleton(5, 4);
+        document.getElementById('weeklyTableBody').innerHTML = createTableSkeleton(9, 4);
         const url = weekStart
           ? `${API_URL}/api/timesheets/weekly?week_start=${weekStart}`
           : `${API_URL}/api/timesheets/weekly`;
@@ -346,20 +607,25 @@
         // Populate table
         const tbody = document.getElementById('weeklyTableBody');
         if (!summary.length) {
-          tbody.innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '◫', title: 'No timesheet data', description: 'Clocked shifts for this week will appear here.', actionLabel: 'Open Sales Clock', actionHref: 'sales.html' })}</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="9">${createEmptyState({ icon: '◫', title: 'No timesheet data', description: 'Clocked shifts for this week will appear here.', actionLabel: 'Open Sales Clock', actionHref: 'sales.html' })}</td></tr>`;
           return;
         }
         tbody.innerHTML = summary.map(r => `
           <tr>
-            <td style="font-weight:700">${r.employee_name}</td>
+            <td style="font-weight:700">${escapeHtml(r.employee_name)}</td>
             <td class="small">${r.shifts}</td>
-            <td class="hours-badge">${parseFloat(r.total_hours).toFixed(2)}h</td>
-            <td class="small">${r.total_minutes} min</td>
+            <td><div class="hours-badge">${parseFloat(r.total_hours).toFixed(2)}h</div><div class="payroll-note">${r.total_minutes} min clocked</div></td>
+            <td class="payroll-calc-cell">${canManagePayroll ? `<input class="form-input payroll-inline-input payable-hours-input" type="number" min="0" step="0.25" value="${Number(r.payable_hours ?? r.total_hours ?? 0)}" />` : `<span class="small">${Number(r.payable_hours ?? r.total_hours ?? 0).toFixed(2)}h</span>`}</td>
+            <td class="payroll-calc-cell">${canManagePayroll ? `<input class="form-input payroll-inline-input hourly-rate-input" type="number" min="0" step="0.01" value="${Number(r.hourly_rate ?? 0)}" />` : `<span class="small">${fmtCurrency(r.hourly_rate || 0)}</span>`}</td>
+            <td class="amount hourly-amount-preview">${fmtCurrency(r.hourly_amount ?? ((Number(r.payable_hours ?? r.total_hours ?? 0) || 0) * (Number(r.hourly_rate ?? 0) || 0)))}</td>
+            <td>${r.payroll_entry_id ? `<span class="payroll-status-badge payroll-status-badge--saved">Saved to owed</span><div class="payroll-note">${r.payroll_updated_at ? `Updated ${fmtDT(r.payroll_updated_at)}` : 'Saved'}${r.payroll_updated_by ? ` by ${escapeHtml(r.payroll_updated_by)}` : ''}</div>` : `<span class="payroll-status-badge payroll-status-badge--pending">Not added yet</span><div class="payroll-note">Save this week to carry it into the running owed total.</div>`}</td>
             <td class="small">${r.week_start ? new Date(r.week_start).toLocaleDateString() : '—'}</td>
+            <td>${canManagePayroll ? `<div class="payroll-actions"><button type="button" class="button-secondary save-hourly-btn" data-entry-id="${r.payroll_entry_id || ''}" data-employee="${encodeURIComponent(r.employee_name)}" data-week-start="${r.week_start}">${r.payroll_entry_id ? 'Update Owed' : 'Add to Owed'}</button>${r.payroll_entry_id ? `<button type="button" class="button-secondary delete-hourly-btn" data-entry-id="${r.payroll_entry_id}" data-employee="${encodeURIComponent(r.employee_name)}" data-week-start="${r.week_start}" style="border-color:rgba(255,100,100,0.35);color:#ff9b9b;">Remove</button>` : ''}</div>` : '<span class="small" style="color:var(--text-muted)">View only</span>'}</td>
           </tr>`).join('');
+        bindWeeklyPayrollActions();
       } catch (e) {
         console.error('Failed to load weekly summary:', e);
-        document.getElementById('weeklyTableBody').innerHTML = `<tr><td colspan="5">${createEmptyState({ icon: '!', title: 'Unable to load weekly hours', description: 'Please refresh and try again.' })}</td></tr>`;
+        document.getElementById('weeklyTableBody').innerHTML = `<tr><td colspan="9">${createEmptyState({ icon: '!', title: 'Unable to load weekly hours', description: 'Please refresh and try again.' })}</td></tr>`;
         showToast('error', 'Failed to load weekly payroll summary.');
       }
     }
@@ -401,10 +667,14 @@
     document.getElementById('weekPicker').addEventListener('change', (e) => loadWeekly(e.target.value));
     document.getElementById('logPrevBtn').addEventListener('click', () => loadShiftLog(logPage - 1));
     document.getElementById('logNextBtn').addEventListener('click', () => loadShiftLog(logPage + 1));
+    document.getElementById('payrollHistoryModal').addEventListener('click', (event) => {
+      if (event.target.id === 'payrollHistoryModal') closePayrollHistoryModal();
+    });
 
     subscribeAppEvent('finance:changed', () => {
       loadLedger();
       loadPayments();
+      loadWeekly(getSelectedWeek());
     });
 
     Promise.all([loadWeekly(), loadShiftLog(), loadLedger(), loadPayments()]);

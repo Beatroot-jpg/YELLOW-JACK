@@ -21,6 +21,17 @@
     .sale-history-card__label { font-size:0.74rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
     .sale-history-card__line { font-size:0.88rem; color:var(--text-main); margin-bottom:4px; }
     .sale-history-badge { display:inline-flex; align-items:center; padding:4px 8px; border-radius:999px; font-size:0.74rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; background:rgba(255, 196, 74, 0.16); color:var(--accent-10); }
+    .sale-options { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); margin-top:4px; }
+    .sale-option-card { border:1px solid var(--border-subtle); border-radius:12px; padding:12px; background:rgba(255,255,255,0.025); }
+    .sale-option-card label { display:flex; gap:10px; align-items:flex-start; font-weight:700; color:var(--text-main); cursor:pointer; }
+    .sale-option-card input[type="checkbox"] { margin-top:3px; }
+    .sale-option-card small { display:block; margin-top:4px; font-weight:400; color:var(--text-muted); }
+    .sale-option-extra { display:none; margin-top:10px; }
+    .sale-option-extra.open { display:grid; gap:12px; }
+    .sale-preview { margin-top:10px; font-size:0.84rem; color:var(--text-muted); }
+    .token-panel-grid { display:grid; gap:18px; grid-template-columns:minmax(0, 1.2fr) minmax(0, 1.8fr); }
+    .token-account-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    @media (max-width:980px) { .token-panel-grid { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -54,7 +65,7 @@
         <div class="section-intro__copy">
           <span class="section-intro__eyebrow">Sales Overview</span>
           <h3 class="section-intro__title">Live venue performance</h3>
-          <p class="section-intro__desc">Track current volume, historical sales count, and business revenue from one operational view.</p>
+          <p class="section-intro__desc">Track current volume and historical sales count from one operational view.</p>
         </div>
         <span class="section-intro__meta">Real-time operational dashboard</span>
       </div>
@@ -70,18 +81,13 @@
           <div class="value" id="stat-count">—</div>
           <div class="note">All recorded sales entries</div>
         </div>
-        <div class="card">
-          <h3>Total Revenue</h3>
-          <div class="value" id="stat-revenue">—</div>
-          <div class="note">Business share (90%) of all sales</div>
-        </div>
       </section>
 
       <div class="section-intro">
         <div class="section-intro__copy">
           <span class="section-intro__eyebrow">Sales Operations</span>
           <h3 class="section-intro__title">Log and review venue transactions</h3>
-          <p class="section-intro__desc">Capture new sales, filter recorded history, and monitor the ledger owed to staff.</p>
+          <p class="section-intro__desc">Capture new sales, apply happy hour or token rules when needed, and review recorded history.</p>
         </div>
       </div>
 
@@ -114,7 +120,7 @@
               />
             </div>
             <div class="form-field">
-              <label class="form-label" for="sale-amount">Total Amount ($)</label>
+              <label class="form-label" for="sale-amount">Commissionable Amount ($)</label>
               <input
                 id="sale-amount"
                 type="number"
@@ -125,12 +131,37 @@
                 required
               />
             </div>
+            <div class="form-field form-field--wide">
+              <div class="sale-options">
+                <div class="sale-option-card">
+                  <label for="sale-happy-hour"><input id="sale-happy-hour" type="checkbox" /> Happy Hour
+                    <small>Halves the charged sale total, but staff still earn 10% commission from the full amount you typed.</small>
+                  </label>
+                </div>
+                <div class="sale-option-card">
+                  <label for="sale-token"><input id="sale-token" type="checkbox" /> Token Sale
+                    <small>Sets business revenue to $0, deducts tokens from a selected account, and still pays commission from the full amount typed.</small>
+                  </label>
+                  <div id="tokenSaleFields" class="sale-option-extra">
+                    <div class="form-field">
+                      <label class="form-label" for="sale-token-count">Tokens Used</label>
+                      <input id="sale-token-count" type="number" min="1" step="1" class="form-input" placeholder="0" />
+                    </div>
+                    <div class="form-field">
+                      <label class="form-label" for="sale-token-account">Token Account</label>
+                      <select id="sale-token-account" class="form-input"><option value="">Select token account</option></select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="salePricingPreview" class="sale-preview">Standard sale: business keeps 90% and staff earns 10% of the amount entered.</div>
+            </div>
           </form>
           <div class="form-actions">
             <button type="submit" form="saleForm" class="button-primary" id="saveBtn">Save Sale</button>
           </div>
           <p class="panel-subtitle panel-note">
-            Each sale automatically gives the worker a 10% cut and 90% goes to the business. Payroll balances and payouts are managed from the Payroll page, while sales corrections stay in Admin.
+            Enter the full commissionable amount every time. Happy Hour reduces the charged total, Token Sale drops business revenue to $0, and Payroll balances/payouts are managed from the Payroll page.
           </p>
         </div>
 
@@ -192,6 +223,50 @@
 
       <div class="section-intro">
         <div class="section-intro__copy">
+          <span class="section-intro__eyebrow">Token Accounts</span>
+          <h3 class="section-intro__title">Manage group and business token balances</h3>
+          <p class="section-intro__desc">Create token accounts, allocate balances, and use them during token-based sales.</p>
+        </div>
+      </div>
+
+      <section class="token-panel-grid">
+        <div class="panel" id="tokenAccountManagerPanel">
+          <div class="panel-header">
+            <h3 class="panel-title">Create Token Account</h3>
+            <span class="panel-subtitle">Managers, Admins, and Owners can allocate token balances</span>
+          </div>
+          <div class="form-field"><label class="form-label" for="token-account-name">Group / Business Name</label><input id="token-account-name" class="form-input" placeholder="Group or business name" /></div>
+          <div class="form-field"><label class="form-label" for="token-account-balance">Allocated Tokens</label><input id="token-account-balance" type="number" min="0" step="1" class="form-input" placeholder="0" /></div>
+          <div class="form-actions"><button type="button" class="button-primary" id="createTokenAccountBtn">Create Token Account</button></div>
+          <div id="tokenAccountMsg" class="ui-message"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title">Token Account Balances</h3>
+            <span class="panel-subtitle">Select from these accounts during token sales</span>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Available Tokens</th>
+                  <th>Last Updated</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="tokenAccountsTableBody">
+                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+                <tr><td colspan="4" style="padding:0"><div class="skeleton-table-row" style="grid-template-columns:repeat(4,minmax(0,1fr));"><div class="skeleton skeleton-line skeleton-line--lg"></div><div class="skeleton skeleton-line skeleton-line--sm"></div><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--sm"></div></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <div class="section-intro">
+        <div class="section-intro__copy">
           <span class="section-intro__eyebrow">Shift Control</span>
           <h3 class="section-intro__title">Clock staff in and out</h3>
           <p class="section-intro__desc">Use the shift controls below to start and stop timed sessions that feed into payroll tracking.</p>
@@ -238,10 +313,57 @@
     const currentUser = getUser();
     if (!currentUser) throw new Error('Not authenticated');
     document.getElementById('currentUser').textContent = `${currentUser.full_name} · ${currentUser.role}`;
+    const canManageTokenAccounts = ['Manager', 'Admin', 'Owner'].includes(currentUser.role);
+    if (!canManageTokenAccounts) document.getElementById('tokenAccountManagerPanel').style.display = 'none';
 
     let currentPage = 1;
     let totalPages = 1;
     const currentFilters = { employee: '', date_from: '', date_to: '' };
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getSaleMode() {
+      return document.getElementById('sale-token').checked
+        ? 'TOKEN'
+        : document.getElementById('sale-happy-hour').checked
+          ? 'HAPPY_HOUR'
+          : 'STANDARD';
+    }
+
+    function updateSalePricingPreview() {
+      const amount = Number(document.getElementById('sale-amount').value || 0);
+      const tokenChecked = document.getElementById('sale-token').checked;
+      const happyHourChecked = document.getElementById('sale-happy-hour').checked;
+      const tokenFields = document.getElementById('tokenSaleFields');
+      tokenFields.classList.toggle('open', tokenChecked);
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        document.getElementById('salePricingPreview').textContent = 'Enter the full commissionable amount to preview the final charged total and staff commission.';
+        return;
+      }
+
+      const commission = amount * 0.10;
+      if (tokenChecked) {
+        const tokenCount = Number(document.getElementById('sale-token-count').value || 0);
+        document.getElementById('salePricingPreview').textContent = `Token sale preview: customer charge ${fmtCurrency(0)}, staff commission ${fmtCurrency(commission)}, business revenue ${fmtCurrency(0)}${tokenCount > 0 ? `, deducting ${tokenCount} token${tokenCount === 1 ? '' : 's'}` : ''}.`;
+        return;
+      }
+
+      if (happyHourChecked) {
+        const charged = amount * 0.5;
+        document.getElementById('salePricingPreview').textContent = `Happy Hour preview: customer charge ${fmtCurrency(charged)}, staff commission ${fmtCurrency(commission)}, business revenue ${fmtCurrency(Math.max(charged - commission, 0))}.`;
+        return;
+      }
+
+      document.getElementById('salePricingPreview').textContent = `Standard sale preview: customer charge ${fmtCurrency(amount)}, staff commission ${fmtCurrency(commission)}, business revenue ${fmtCurrency(amount * 0.90)}.`;
+    }
 
     function updateSalesFilterMeta() {
       const parts = [];
@@ -268,18 +390,68 @@
       } catch (e) { console.error('Failed to load roster:', e); }
     }
 
+    async function loadTokenAccounts() {
+      try {
+        const res = await apiFetch(`${API_URL}/api/token-accounts`);
+        const data = await res.json();
+        const accounts = data.token_accounts || [];
+
+        const select = document.getElementById('sale-token-account');
+        select.innerHTML = `<option value="">Select token account</option>${accounts.map(account => `<option value="${account.id}">${escapeHtml(account.account_name)} (${account.token_balance} tokens)</option>`).join('')}`;
+
+        const tbody = document.getElementById('tokenAccountsTableBody');
+        if (!accounts.length) {
+          tbody.innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '◌', title: 'No token accounts yet', description: canManageTokenAccounts ? 'Create the first token account to start logging token-based sales.' : 'A manager can create token accounts for token-based sales.' })}</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = accounts.map(account => `
+          <tr>
+            <td>${escapeHtml(account.account_name)}</td>
+            <td>${canManageTokenAccounts ? `<input type="number" min="0" step="1" class="form-input token-balance-input" value="${Number(account.token_balance || 0)}" />` : `${Number(account.token_balance || 0)} tokens`}</td>
+            <td class="small">${account.updated_at ? new Date(account.updated_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
+            <td>${canManageTokenAccounts ? `<div class="token-account-actions"><button type="button" class="button-secondary save-token-account-btn" data-id="${account.id}" data-name="${encodeURIComponent(account.account_name)}">Save</button></div>` : '<span class="small" style="color:var(--text-muted)">View only</span>'}</td>
+          </tr>`).join('');
+
+        document.querySelectorAll('.save-token-account-btn').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const row = btn.closest('tr');
+            const balance = Number(row.querySelector('.token-balance-input')?.value || 0);
+            btn.dataset.originalLabel = 'Save';
+            setButtonLoading(btn, true, 'Saving...');
+            try {
+              const res = await apiFetch(`${API_URL}/api/token-accounts/${btn.dataset.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account_name: decodeURIComponent(btn.dataset.name), token_balance: balance })
+              });
+              const data = await res.json().catch(() => ({}));
+              if (!res.ok) return showToast('error', data.error || 'Failed to update token account.');
+              showToast('success', 'Token account updated successfully.');
+              await loadTokenAccounts();
+            } catch {
+              showToast('error', 'Connection error while updating token account.');
+            } finally {
+              if (document.body.contains(btn)) setButtonLoading(btn, false);
+            }
+          });
+        });
+      } catch (e) {
+        console.error('Failed to load token accounts:', e);
+        document.getElementById('tokenAccountsTableBody').innerHTML = `<tr><td colspan="4">${createEmptyState({ icon: '!', title: 'Unable to load token accounts', description: 'Please refresh and try again.' })}</td></tr>`;
+      }
+    }
+
     async function loadSalesSummary() {
       try {
-        const res = await apiFetch(`${API_URL}/api/analytics/summary`);
+        const res = await apiFetch(`${API_URL}/api/sales/summary`);
         const data = await res.json();
         document.getElementById('stat-tonight').textContent = fmtCurrency(data.today?.total || 0);
         document.getElementById('stat-count').textContent = data.all_time?.count || 0;
-        document.getElementById('stat-revenue').textContent = fmtCurrency(data.all_time?.business || 0);
       } catch (e) {
         console.error('Failed to load sales summary:', e);
         document.getElementById('stat-tonight').textContent = '—';
         document.getElementById('stat-count').textContent = '—';
-        document.getElementById('stat-revenue').textContent = '—';
       }
     }
 
@@ -298,9 +470,14 @@
         } else {
           tbody.innerHTML = sales.map(s => {
             const dt = new Date(s.created_at);
+            const saleTypeNote = s.sale_type === 'TOKEN'
+              ? `<div class="sale-edit-note">Token sale · ${Number(s.token_count || 0)} token${Number(s.token_count || 0) === 1 ? '' : 's'} from ${escapeHtml(s.token_account_name || 'unknown account')} · commission based on ${fmtCurrency(s.original_amount || s.total_amount || 0)}</div>`
+              : s.sale_type === 'HAPPY_HOUR'
+                ? `<div class="sale-edit-note">Happy Hour · charged at half price · commission based on ${fmtCurrency(s.original_amount || s.total_amount || 0)}</div>`
+                : '';
             return `<tr>
-              <td>${s.employee_name}</td>
-              <td>${s.description || '—'}</td>
+              <td>${escapeHtml(s.employee_name)}</td>
+              <td>${escapeHtml(s.description || '—')}${saleTypeNote}</td>
               <td class="amount">${fmtCurrency(s.total_amount)}</td>
               <td class="small">${dt.toLocaleDateString()}</td>
               <td class="small">${dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</td>
@@ -336,26 +513,75 @@
       btn.dataset.originalLabel = 'Save Sale';
       setButtonLoading(btn, true, 'Saving...');
       try {
+        const saleMode = getSaleMode();
         const res = await apiFetch(`${API_URL}/api/sales`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             employee_name: document.getElementById('sale-employee').value,
             description: document.getElementById('sale-description').value,
-            total_amount: parseFloat(document.getElementById('sale-amount').value)
+            total_amount: parseFloat(document.getElementById('sale-amount').value),
+            happy_hour: saleMode === 'HAPPY_HOUR',
+            token_sale: saleMode === 'TOKEN',
+            token_count: saleMode === 'TOKEN' ? parseInt(document.getElementById('sale-token-count').value || '0', 10) : 0,
+            token_account_id: saleMode === 'TOKEN' ? parseInt(document.getElementById('sale-token-account').value || '0', 10) : null
           })
         });
+        const payload = await res.json().catch(() => ({}));
         if (res.ok) {
           e.target.reset();
+          document.getElementById('sale-token-account').value = '';
+          document.getElementById('sale-token-count').value = '';
+          updateSalePricingPreview();
           showToast('success', 'Sale saved successfully.');
-          await refreshFinanceViews(1);
+          await Promise.all([refreshFinanceViews(1), loadTokenAccounts()]);
           broadcastAppEvent('finance:changed', { action: 'sale-created' });
         } else {
-          const err = await res.json();
-          showToast('error', err.error || 'Failed to save sale.');
+          showToast('error', payload.error || 'Failed to save sale.');
         }
       } catch {
         showToast('error', 'Connection error while saving sale.');
+      }
+      setButtonLoading(btn, false);
+    });
+
+    document.getElementById('sale-happy-hour').addEventListener('change', (event) => {
+      if (event.target.checked) document.getElementById('sale-token').checked = false;
+      updateSalePricingPreview();
+    });
+    document.getElementById('sale-token').addEventListener('change', (event) => {
+      if (event.target.checked) document.getElementById('sale-happy-hour').checked = false;
+      updateSalePricingPreview();
+    });
+    ['sale-amount', 'sale-token-count', 'sale-token-account'].forEach(id => {
+      document.getElementById(id).addEventListener('input', updateSalePricingPreview);
+      document.getElementById(id).addEventListener('change', updateSalePricingPreview);
+    });
+
+    document.getElementById('createTokenAccountBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('createTokenAccountBtn');
+      const account_name = document.getElementById('token-account-name').value.trim();
+      const token_balance = parseInt(document.getElementById('token-account-balance').value || '0', 10);
+      if (!account_name) return showInlineMessage('tokenAccountMsg', 'Account name is required.', false, 5000);
+
+      btn.dataset.originalLabel = 'Create Token Account';
+      setButtonLoading(btn, true, 'Creating...');
+      try {
+        const res = await apiFetch(`${API_URL}/api/token-accounts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account_name, token_balance })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return showInlineMessage('tokenAccountMsg', data.error || 'Failed to create token account.', false, 5000);
+
+        document.getElementById('token-account-name').value = '';
+        document.getElementById('token-account-balance').value = '';
+        showInlineMessage('tokenAccountMsg', `Token account "${account_name}" created.`, true, 5000);
+        showToast('success', `Token account "${account_name}" created.`);
+        await loadTokenAccounts();
+      } catch {
+        showInlineMessage('tokenAccountMsg', 'Connection error while creating token account.', false, 5000);
       }
       setButtonLoading(btn, false);
     });
@@ -423,6 +649,7 @@
             document.getElementById('clock-employee').value = '';
           }
           await loadActiveShifts();
+          broadcastAppEvent('finance:changed', { action: `timesheet-${action}`, employee_name: employeeName });
           return true;
         }
 
@@ -530,9 +757,11 @@
     subscribeAppEvent('finance:changed', () => {
       loadSalesSummary();
       loadSales(currentPage);
+      loadTokenAccounts();
     });
 
-    Promise.all([loadRoster(), loadSalesSummary(), loadSales(1), loadActiveShifts()]);
+    Promise.all([loadRoster(), loadTokenAccounts(), loadSalesSummary(), loadSales(1), loadActiveShifts()]);
+    updateSalePricingPreview();
 
     // Populate clock employee list from same roster
     async function populateClockRoster() {

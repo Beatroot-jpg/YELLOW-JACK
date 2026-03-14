@@ -19,6 +19,8 @@
       color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.16em;
     }
     .totals-grid-card .note { font-size: 0.76rem; }
+    .access-denied { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:48px 24px; color:var(--text-muted); text-align:center; }
+    .access-denied h3 { font-size:1.5rem; color:var(--accent-10); text-transform:uppercase; letter-spacing:0.12em; }
     @media (max-width: 980px) {
       .analytics-row--totals { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
     }
@@ -50,6 +52,14 @@
         </div>
         <span id="currentUser">Loading...</span>
       </header>
+
+      <div class="access-denied" id="accessDenied" style="display:none;">
+        <h3>Access Restricted</h3>
+        <p>This page is only available to Managers, Admins, and Owners.</p>
+        <a href="dashboard.html" class="button-primary" style="text-decoration:none;display:inline-block;">Back to Dashboard</a>
+      </div>
+
+      <div id="analyticsContent">
 
       <div class="section-intro">
         <div class="section-intro__copy">
@@ -129,7 +139,7 @@
         <div class="panel">
           <div class="panel-header">
             <h3 class="panel-title">Monthly Sales Leaderboard</h3>
-            <span class="panel-subtitle">Top earners all time</span>
+            <span class="panel-subtitle">Top sellers this month</span>
           </div>
           <ul class="leaderboard-list" id="leaderboard-monthly">
             <li class="skeleton-list-item"><div class="skeleton skeleton-line skeleton-line--md"></div><div class="skeleton skeleton-line skeleton-line--lg"></div></li>
@@ -160,7 +170,7 @@
           <div class="card-kicker">Business</div>
           <h3>Total Revenue (All Time)</h3>
           <div class="value" id="stat-total-revenue"><div class="skeleton skeleton-line skeleton-line--value"></div></div>
-          <div class="note">Cumulative business revenue (90% of all sales)</div>
+          <div class="note">Cumulative business revenue after pricing rules and staff commission</div>
         </div>
         <div class="card card--kpi totals-grid-card">
           <div class="card-kicker">Commission</div>
@@ -169,6 +179,7 @@
           <div class="note">Cumulative 10% commissions earned by all staff</div>
         </div>
       </section>
+      </div>
     </main>
   </div>
 
@@ -179,10 +190,18 @@
     if (!user) throw new Error('Not authenticated');
     document.getElementById('currentUser').textContent = `${user.full_name} · ${user.role}`;
 
+    if (!canAccessAnalytics(user)) {
+      document.getElementById('analyticsContent').style.display = 'none';
+      document.getElementById('accessDenied').style.display = 'flex';
+    }
+
     async function loadStats() {
       try {
         const res = await apiFetch(`${API_URL}/api/analytics/summary`);
         const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load analytics data');
+        }
         document.getElementById('stat-tonight').textContent = fmtCurrency(data.today?.total || 0);
         document.getElementById('stat-total-count').textContent = data.all_time?.count || 0;
         document.getElementById('stat-total-revenue').textContent = fmtCurrency(data.all_time?.business || 0);
@@ -204,7 +223,7 @@
         };
 
         buildList('leaderboard-weekly', data.top_earners);
-        buildList('leaderboard-monthly', [...(data.top_earners || [])].reverse());
+        buildList('leaderboard-monthly', data.top_earners_monthly || []);
       } catch (e) {
         console.error('Failed to load analytics:', e);
         showToast('error', 'Failed to load analytics data. Please try again.');
@@ -213,8 +232,10 @@
       }
     }
 
-    loadStats();
-    subscribeAppEvent('finance:changed', () => loadStats());
+    if (canAccessAnalytics(user)) {
+      loadStats();
+      subscribeAppEvent('finance:changed', () => loadStats());
+    }
   </script>
 </body>
 </html>

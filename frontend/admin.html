@@ -120,7 +120,7 @@
       <input type="hidden" id="editSaleId" />
       <div class="form-field"><label class="form-label" for="editSaleEmployee">Name</label><input id="editSaleEmployee" class="form-input" list="sale-employee-list" placeholder="Type or choose staff member" /></div>
       <div class="form-field"><label class="form-label" for="editSaleDescription">Description</label><input id="editSaleDescription" class="form-input" type="text" placeholder="What was sold / table / notes" /></div>
-      <div class="form-field"><label class="form-label" for="editSaleAmount">Total Amount ($)</label><input id="editSaleAmount" class="form-input" type="number" min="0" step="0.01" placeholder="0.00" /></div>
+      <div class="form-field"><label class="form-label" for="editSaleAmount">Commissionable Amount ($)</label><input id="editSaleAmount" class="form-input" type="number" min="0" step="0.01" placeholder="0.00" /><div class="sale-edit-note" id="editSaleModeNote">This should be the full amount staff commission is based on.</div></div>
       <div class="form-field"><label class="form-label" for="editSaleReason">Reason for change</label><textarea id="editSaleReason" class="form-input" rows="3" placeholder="Explain what was corrected and why"></textarea><div class="sale-edit-note">Required. Stored in the sale audit trail.</div></div>
       <div id="editSaleMsg" class="ui-message" style="margin-top:10px;"></div>
       <div class="modal-actions"><button type="button" class="btn-cancel" onclick="closeEditSaleModal()">Cancel</button><button type="button" class="button-primary" id="saveEditSaleBtn">Save Changes</button></div>
@@ -241,10 +241,15 @@
           const created = s.created_at ? new Date(s.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—';
           const updated = s.updated_at ? new Date(s.updated_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—';
           const statusBadge = s.deleted_at ? `<span class="sale-status-pill sale-status-pill--deleted">Archived</span><div class="sale-edit-note">${escapeHtml(s.deleted_reason || 'No reason')}</div>` : `<span class="sale-status-pill sale-status-pill--active">Active</span>`;
+          const saleTypeNote = s.sale_type === 'TOKEN'
+            ? `<div class="sale-edit-note">Token sale · ${Number(s.token_count || 0)} token${Number(s.token_count || 0) === 1 ? '' : 's'} from ${escapeHtml(s.token_account_name || 'unknown account')} · commission based on ${fmtCurrency(s.original_amount || s.total_amount || 0)}</div>`
+            : s.sale_type === 'HAPPY_HOUR'
+              ? `<div class="sale-edit-note">Happy Hour · charged at half price · commission based on ${fmtCurrency(s.original_amount || s.total_amount || 0)}</div>`
+              : '';
           const actions = s.deleted_at
             ? `<button type="button" class="button-secondary history-sale-btn" data-sale-id="${s.id}">History</button><button type="button" class="button-secondary restore-sale-btn" data-sale-id="${s.id}">Restore</button>`
             : `<button type="button" class="button-secondary edit-sale-btn" data-sale-id="${s.id}">Edit</button><button type="button" class="button-secondary history-sale-btn" data-sale-id="${s.id}">History</button><button type="button" class="button-secondary archive-sale-btn" data-sale-id="${s.id}" style="border-color:rgba(255,100,100,0.35);color:#ff9b9b;">Archive</button>`;
-          return `<tr><td>${escapeHtml(s.employee_name)}</td><td>${escapeHtml(s.description || '—')}</td><td class="amount">${fmtCurrency(s.total_amount)}</td><td class="small">${created}</td><td>${statusBadge}</td><td class="small">${updated}${s.updated_by ? `<div class="sale-edit-note">by ${escapeHtml(s.updated_by)}</div>` : ''}</td><td><div class="sale-action-row">${actions}</div></td></tr>`;
+          return `<tr><td>${escapeHtml(s.employee_name)}</td><td>${escapeHtml(s.description || '—')}${saleTypeNote}</td><td class="amount">${fmtCurrency(s.total_amount)}</td><td class="small">${created}</td><td>${statusBadge}</td><td class="small">${updated}${s.updated_by ? `<div class="sale-edit-note">by ${escapeHtml(s.updated_by)}</div>` : ''}</td><td><div class="sale-action-row">${actions}</div></td></tr>`;
         }).join('');
         bindSalesAdminActions();
       } catch (e) {
@@ -261,7 +266,12 @@
       document.getElementById('editSaleId').value = sale.id;
       document.getElementById('editSaleEmployee').value = sale.employee_name || '';
       document.getElementById('editSaleDescription').value = sale.description || '';
-      document.getElementById('editSaleAmount').value = Number(sale.total_amount || 0);
+      document.getElementById('editSaleAmount').value = Number(sale.original_amount || sale.total_amount || 0);
+      document.getElementById('editSaleModeNote').textContent = sale.sale_type === 'TOKEN'
+        ? `Token sale. Leave this as the full commissionable amount. ${Number(sale.token_count || 0)} token${Number(sale.token_count || 0) === 1 ? '' : 's'} currently come from ${sale.token_account_name || 'the selected account'}.`
+        : sale.sale_type === 'HAPPY_HOUR'
+          ? 'Happy Hour sale. Leave this as the full commissionable amount; the charged total will still be halved.'
+          : 'This should be the full amount staff commission is based on.';
       document.getElementById('editSaleReason').value = '';
       document.getElementById('editSaleMsg').style.display = 'none';
       document.getElementById('editSaleModal').classList.add('open');
@@ -275,7 +285,7 @@
 
     function renderHistorySnapshot(label, snapshot) {
       if (!snapshot) return `<div class="sale-history-card"><div class="sale-history-card__label">${escapeHtml(label)}</div><div class="sale-history-card__line">No state recorded.</div></div>`;
-      return `<div class="sale-history-card"><div class="sale-history-card__label">${escapeHtml(label)}</div><div class="sale-history-card__line"><strong>Staff:</strong> ${escapeHtml(snapshot.employee_name || '—')}</div><div class="sale-history-card__line"><strong>Description:</strong> ${escapeHtml(snapshot.description || '—')}</div><div class="sale-history-card__line"><strong>Total:</strong> ${escapeHtml(fmtCurrency(snapshot.total_amount || 0))}</div><div class="sale-history-card__line"><strong>Staff Cut:</strong> ${escapeHtml(fmtCurrency(snapshot.money_earnt || 0))}</div><div class="sale-history-card__line"><strong>Business:</strong> ${escapeHtml(fmtCurrency(snapshot.business_made || 0))}</div></div>`;
+      return `<div class="sale-history-card"><div class="sale-history-card__label">${escapeHtml(label)}</div><div class="sale-history-card__line"><strong>Staff:</strong> ${escapeHtml(snapshot.employee_name || '—')}</div><div class="sale-history-card__line"><strong>Description:</strong> ${escapeHtml(snapshot.description || '—')}</div><div class="sale-history-card__line"><strong>Type:</strong> ${escapeHtml(snapshot.sale_type || 'STANDARD')}</div><div class="sale-history-card__line"><strong>Commissionable:</strong> ${escapeHtml(fmtCurrency(snapshot.original_amount || snapshot.total_amount || 0))}</div><div class="sale-history-card__line"><strong>Charged Total:</strong> ${escapeHtml(fmtCurrency(snapshot.total_amount || 0))}</div><div class="sale-history-card__line"><strong>Staff Cut:</strong> ${escapeHtml(fmtCurrency(snapshot.money_earnt || 0))}</div><div class="sale-history-card__line"><strong>Business:</strong> ${escapeHtml(fmtCurrency(snapshot.business_made || 0))}</div>${snapshot.sale_type === 'TOKEN' ? `<div class="sale-history-card__line"><strong>Tokens:</strong> ${escapeHtml(snapshot.token_count || 0)} from ${escapeHtml(snapshot.token_account_name || 'unknown account')}</div>` : ''}</div>`;
     }
 
     function renderHistoryEntry(entry) {

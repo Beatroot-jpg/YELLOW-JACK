@@ -7,6 +7,8 @@ require('dotenv').config();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'yellow-jack-jwt-secret-key';
 const ADMIN_ROLES = ['Admin', 'Owner'];
+const ANALYTICS_ROLES = ['Manager', 'Admin', 'Owner'];
+const PAYROLL_ROLES = ['Manager', 'Admin', 'Owner'];
 const USER_ROLES = ['Staff', 'Manager', 'Admin', 'Owner'];
 
 const { pool, initializeDatabase } = require('./database');
@@ -94,34 +96,112 @@ function normalizeReason(rawReason, required = false) {
 function parseSaleInput(body) {
   const employee_name = String(body.employee_name || '').trim();
   const description = String(body.description || '').trim();
-  const total = Number(body.total_amount);
+  const original = Number(body.total_amount);
+  const happy_hour = body.happy_hour === true || body.happy_hour === 'true';
+  const token_sale = body.token_sale === true || body.token_sale === 'true';
+  const token_count = Number(body.token_count || 0);
+  const token_account_id = body.token_account_id ? Number(body.token_account_id) : null;
 
   if (!employee_name) {
     return { error: 'Employee name is required' };
   }
 
-  if (!Number.isFinite(total) || total <= 0) {
+  if (!Number.isFinite(original) || original <= 0) {
     return { error: 'Total amount must be greater than 0' };
   }
 
-  const total_amount = toMoney(total);
+  if (happy_hour && token_sale) {
+    return { error: 'A sale cannot be both Happy Hour and Token based' };
+  }
+
+  if (token_sale) {
+    if (!Number.isInteger(token_count) || token_count <= 0) {
+      return { error: 'Token sales must include a token quantity of at least 1' };
+    }
+
+    if (!Number.isInteger(token_account_id) || token_account_id <= 0) {
+      return { error: 'Please select a token account for token sales' };
+    }
+  }
+
+  const original_amount = toMoney(original);
+  const sale_type = token_sale ? 'TOKEN' : happy_hour ? 'HAPPY_HOUR' : 'STANDARD';
+  const total_amount = sale_type === 'HAPPY_HOUR'
+    ? toMoney(original_amount * 0.5)
+    : sale_type === 'TOKEN'
+      ? 0
+      : original_amount;
+  const money_earnt = toMoney(original_amount * 0.10);
+  const business_made = sale_type === 'TOKEN'
+    ? 0
+    : toMoney(Math.max(total_amount - money_earnt, 0));
+
   return {
     employee_name,
     description,
+    original_amount,
     total_amount,
-    money_earnt: toMoney(total_amount * 0.10),
-    business_made: toMoney(total_amount * 0.90)
+    money_earnt,
+    business_made,
+    sale_type,
+    happy_hour,
+    token_sale,
+    token_count: token_sale ? token_count : 0,
+    token_account_id: token_sale ? token_account_id : null
   };
+}
+
+async function getTokenAccountForUpdate(client, accountId) {
+  const result = await client.query(
+    'SELECT * FROM token_accounts WHERE id = $1 FOR UPDATE',
+    [accountId]
+  );
+  return result.rows[0] || null;
+}
+
+async function applyTokenSaleAdjustment(client, sale, direction = 'deduct') {
+  if (!sale || sale.sale_type !== 'TOKEN' || !sale.token_account_id || !sale.token_count) {
+    return null;
+  }
+
+  const account = await getTokenAccountForUpdate(client, sale.token_account_id);
+  if (!account) {
+    throw new Error('Selected token account no longer exists');
+  }
+
+  const tokenCount = Number(sale.token_count || 0);
+  const multiplier = direction === 'restore' ? 1 : -1;
+  const nextBalance = Number(account.token_balance || 0) + (tokenCount * multiplier);
+  if (nextBalance < 0) {
+    throw new Error(`Not enough tokens in ${account.account_name}. Available: ${account.token_balance}`);
+  }
+
+  const updated = await client.query(
+    `UPDATE token_accounts
+     SET token_balance = $1,
+         updated_at = CURRENT_TIMESTAMP,
+         updated_by = $2
+     WHERE id = $3
+     RETURNING *`,
+    [nextBalance, sale.updated_by || sale.created_by || null, sale.token_account_id]
+  );
+
+  return updated.rows[0] || null;
 }
 
 async function reconcileLedgerForEmployee(client, employeeName) {
   const name = String(employeeName || '').trim();
   if (!name) return;
 
-  const [salesAgg, paymentAgg] = await Promise.all([
+  const [salesAgg, hourlyAgg, paymentAgg] = await Promise.all([
     client.query(
       `SELECT COALESCE(SUM(money_earnt), 0) AS commission_total, COUNT(*) AS deals_count
        FROM sales WHERE employee_name = $1 AND deleted_at IS NULL`,
+      [name]
+    ),
+    client.query(
+      `SELECT COALESCE(SUM(hourly_amount), 0) AS hourly_total
+       FROM hourly_payroll_entries WHERE employee_name = $1`,
       [name]
     ),
     client.query(
@@ -132,25 +212,28 @@ async function reconcileLedgerForEmployee(client, employeeName) {
   ]);
 
   const commissionTotal = Number(salesAgg.rows[0].commission_total || 0);
+  const hourlyTotal = Number(hourlyAgg.rows[0].hourly_total || 0);
   const dealsCount = parseInt(salesAgg.rows[0].deals_count || 0);
   const amountPaid = Number(paymentAgg.rows[0].amount_paid || 0);
   const lastPaymentDate = paymentAgg.rows[0].last_payment_date || null;
 
-  if (dealsCount === 0 && amountPaid === 0) {
+  if (dealsCount === 0 && commissionTotal === 0 && hourlyTotal === 0 && amountPaid === 0) {
     await client.query('DELETE FROM employee_ledger WHERE employee_name = $1', [name]);
     return;
   }
 
   await client.query(
-    `INSERT INTO employee_ledger (employee_name, total_money_earnt, deals_count, last_payment_date, updated_at)
-     VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+    `INSERT INTO employee_ledger (employee_name, total_money_earnt, deals_count, last_payment_date, commission_owed, hourly_owed, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
      ON CONFLICT (employee_name)
      DO UPDATE SET
        total_money_earnt = EXCLUDED.total_money_earnt,
        deals_count = EXCLUDED.deals_count,
        last_payment_date = EXCLUDED.last_payment_date,
+       commission_owed = EXCLUDED.commission_owed,
+       hourly_owed = EXCLUDED.hourly_owed,
        updated_at = CURRENT_TIMESTAMP`,
-    [name, toMoney(commissionTotal - amountPaid), dealsCount, lastPaymentDate]
+    [name, toMoney(commissionTotal + hourlyTotal - amountPaid), dealsCount, lastPaymentDate, toMoney(commissionTotal), toMoney(hourlyTotal)]
   );
 }
 
@@ -167,9 +250,14 @@ function buildSaleAuditState(sale) {
     id: sale.id,
     employee_name: sale.employee_name,
     description: sale.description || '',
+    original_amount: Number(sale.original_amount || sale.total_amount || 0),
     total_amount: Number(sale.total_amount || 0),
     money_earnt: Number(sale.money_earnt || 0),
     business_made: Number(sale.business_made || 0),
+    sale_type: sale.sale_type || 'STANDARD',
+    token_count: Number(sale.token_count || 0),
+    token_account_id: sale.token_account_id || null,
+    token_account_name: sale.token_account_name || null,
     created_at: sale.created_at,
     updated_at: sale.updated_at,
     created_by: sale.created_by || null,
@@ -385,6 +473,29 @@ app.get('/api/sales', requireAuth, async (req, res) => {
   }
 });
 
+app.get('/api/sales/summary', requireAuth, async (req, res) => {
+  try {
+    const [today, allTime] = await Promise.all([
+      pool.query(`
+        SELECT COALESCE(SUM(total_amount),0) AS total
+        FROM sales WHERE deleted_at IS NULL AND DATE(created_at) = CURRENT_DATE
+      `),
+      pool.query(`
+        SELECT COUNT(*) AS count
+        FROM sales WHERE deleted_at IS NULL
+      `)
+    ]);
+
+    res.json({
+      today: today.rows[0],
+      all_time: allTime.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching sales summary:', error);
+    res.status(500).json({ error: 'Failed to fetch sales summary' });
+  }
+});
+
 // Create new sale
 app.post('/api/sales', requireAuth, async (req, res) => {
   const client = await pool.connect();
@@ -397,12 +508,47 @@ app.post('/api/sales', requireAuth, async (req, res) => {
 
     await client.query('BEGIN');
 
+    let tokenAccount = null;
+    if (parsed.sale_type === 'TOKEN') {
+      tokenAccount = await getTokenAccountForUpdate(client, parsed.token_account_id);
+      if (!tokenAccount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Selected token account was not found' });
+      }
+
+      if (Number(tokenAccount.token_balance || 0) < parsed.token_count) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Not enough tokens in ${tokenAccount.account_name}. Available: ${tokenAccount.token_balance}` });
+      }
+    }
+
     // Insert sale
     const result = await client.query(
-      `INSERT INTO sales (employee_name, description, total_amount, money_earnt, business_made, created_by, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $6) RETURNING *`,
-      [parsed.employee_name, parsed.description, parsed.total_amount, parsed.money_earnt, parsed.business_made, req.user.username]
+      `INSERT INTO sales (
+         employee_name, description, original_amount, total_amount, money_earnt, business_made,
+         sale_type, token_count, token_account_id, token_account_name, created_by, updated_by
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+       RETURNING *`,
+      [
+        parsed.employee_name,
+        parsed.description,
+        parsed.original_amount,
+        parsed.total_amount,
+        parsed.money_earnt,
+        parsed.business_made,
+        parsed.sale_type,
+        parsed.token_count,
+        parsed.token_account_id,
+        tokenAccount?.account_name || null,
+        req.user.username
+      ]
     );
+
+    await applyTokenSaleAdjustment(client, {
+      ...result.rows[0],
+      updated_by: req.user.username
+    }, 'deduct');
 
     await recordSaleRevision(client, {
       saleId: result.rows[0].id,
@@ -432,10 +578,6 @@ app.post('/api/sales', requireAuth, async (req, res) => {
 app.put('/api/sales/:id', requireRole(ADMIN_ROLES), async (req, res) => {
   const client = await pool.connect();
   try {
-    const parsed = parseSaleInput(req.body);
-    if (parsed.error) {
-      return res.status(400).json({ error: parsed.error });
-    }
     const reasonCheck = normalizeReason(req.body.change_reason, true);
     if (reasonCheck.error) {
       return res.status(400).json({ error: reasonCheck.error });
@@ -455,19 +597,75 @@ app.put('/api/sales/:id', requireRole(ADMIN_ROLES), async (req, res) => {
       return res.status(400).json({ error: 'Deleted sales must be restored before editing' });
     }
 
+    const patchedBody = {
+      employee_name: req.body.employee_name ?? currentSale.employee_name,
+      description: req.body.description ?? currentSale.description,
+      total_amount: req.body.total_amount ?? currentSale.original_amount ?? currentSale.total_amount,
+      happy_hour: req.body.happy_hour ?? (currentSale.sale_type === 'HAPPY_HOUR'),
+      token_sale: req.body.token_sale ?? (currentSale.sale_type === 'TOKEN'),
+      token_count: req.body.token_count ?? currentSale.token_count,
+      token_account_id: req.body.token_account_id ?? currentSale.token_account_id
+    };
+    const parsed = parseSaleInput(patchedBody);
+    if (parsed.error) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    let tokenAccount = null;
+    if (currentSale.sale_type === 'TOKEN') {
+      await applyTokenSaleAdjustment(client, { ...currentSale, updated_by: req.user.username }, 'restore');
+    }
+
+    if (parsed.sale_type === 'TOKEN') {
+      tokenAccount = await getTokenAccountForUpdate(client, parsed.token_account_id);
+      if (!tokenAccount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Selected token account was not found' });
+      }
+
+      if (Number(tokenAccount.token_balance || 0) < parsed.token_count) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Not enough tokens in ${tokenAccount.account_name}. Available: ${tokenAccount.token_balance}` });
+      }
+    }
+
     const updatedResult = await client.query(
       `UPDATE sales
        SET employee_name = $1,
            description = $2,
-           total_amount = $3,
-           money_earnt = $4,
-           business_made = $5,
-           updated_by = $6,
+           original_amount = $3,
+           total_amount = $4,
+           money_earnt = $5,
+           business_made = $6,
+           sale_type = $7,
+           token_count = $8,
+           token_account_id = $9,
+           token_account_name = $10,
+           updated_by = $11,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $7
+       WHERE id = $12
        RETURNING *`,
-      [parsed.employee_name, parsed.description, parsed.total_amount, parsed.money_earnt, parsed.business_made, req.user.username, req.params.id]
+      [
+        parsed.employee_name,
+        parsed.description,
+        parsed.original_amount,
+        parsed.total_amount,
+        parsed.money_earnt,
+        parsed.business_made,
+        parsed.sale_type,
+        parsed.token_count,
+        parsed.token_account_id,
+        tokenAccount?.account_name || null,
+        req.user.username,
+        req.params.id
+      ]
     );
+
+    await applyTokenSaleAdjustment(client, {
+      ...updatedResult.rows[0],
+      updated_by: req.user.username
+    }, 'deduct');
 
     await recordSaleRevision(client, {
       saleId: currentSale.id,
@@ -517,6 +715,10 @@ app.delete('/api/sales/:id', requireRole(ADMIN_ROLES), async (req, res) => {
     if (sale.deleted_at) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Sale is already archived' });
+    }
+
+    if (sale.sale_type === 'TOKEN') {
+      await applyTokenSaleAdjustment(client, { ...sale, updated_by: req.user.username }, 'restore');
     }
 
     const deletedResult = await client.query(
@@ -576,6 +778,19 @@ app.post('/api/sales/:id/restore', requireRole(ADMIN_ROLES), async (req, res) =>
       return res.status(400).json({ error: 'Sale is already active' });
     }
 
+    if (sale.sale_type === 'TOKEN') {
+      const tokenAccount = await getTokenAccountForUpdate(client, sale.token_account_id);
+      if (!tokenAccount) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Selected token account was not found for this token sale' });
+      }
+
+      if (Number(tokenAccount.token_balance || 0) < Number(sale.token_count || 0)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Not enough tokens in ${tokenAccount.account_name} to restore this sale` });
+      }
+    }
+
     const restoredResult = await client.query(
       `UPDATE sales
        SET deleted_at = NULL,
@@ -587,6 +802,11 @@ app.post('/api/sales/:id/restore', requireRole(ADMIN_ROLES), async (req, res) =>
        RETURNING *`,
       [req.user.username, id]
     );
+
+    await applyTokenSaleAdjustment(client, {
+      ...restoredResult.rows[0],
+      updated_by: req.user.username
+    }, 'deduct');
 
     await recordSaleRevision(client, {
       saleId: sale.id,
@@ -632,9 +852,9 @@ app.get('/api/sales/:id/history', requireRole(ADMIN_ROLES), async (req, res) => 
 // ============================================
 
 // Summary stats - today, weekly, monthly, all-time, top earners
-app.get('/api/analytics/summary', requireAuth, async (req, res) => {
+app.get('/api/analytics/summary', requireRole(ANALYTICS_ROLES), async (req, res) => {
   try {
-    const [today, weekly, monthly, allTime, topEarners, salesCount] = await Promise.all([
+    const [today, weekly, monthly, allTime, topEarnersWeekly, topEarnersMonthly, salesCount] = await Promise.all([
       // Today's sales
       pool.query(`
         SELECT COALESCE(SUM(total_amount),0) AS total, COALESCE(SUM(business_made),0) AS business, COUNT(*) AS count
@@ -660,12 +880,22 @@ app.get('/api/analytics/summary', requireAuth, async (req, res) => {
       pool.query(`
         SELECT employee_name, COALESCE(SUM(money_earnt), 0) AS total_money_earnt, COUNT(*) AS deals_count
         FROM sales WHERE deleted_at IS NULL
+          AND created_at >= date_trunc('week', CURRENT_TIMESTAMP)
+        GROUP BY employee_name
+        ORDER BY total_money_earnt DESC, deals_count DESC
+        LIMIT 5
+      `),
+      // Top 5 earners (monthly)
+      pool.query(`
+        SELECT employee_name, COALESCE(SUM(money_earnt), 0) AS total_money_earnt, COUNT(*) AS deals_count
+        FROM sales WHERE deleted_at IS NULL
+          AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
         GROUP BY employee_name
         ORDER BY total_money_earnt DESC, deals_count DESC
         LIMIT 5
       `),
       // Active staff count
-      pool.query(`SELECT COUNT(*) AS count FROM employee_ledger`)
+      pool.query(`SELECT COUNT(*) AS count FROM employee_ledger WHERE total_money_earnt > 0`)
     ]);
 
     res.json({
@@ -673,7 +903,8 @@ app.get('/api/analytics/summary', requireAuth, async (req, res) => {
       weekly: weekly.rows[0],
       monthly: monthly.rows[0],
       all_time: allTime.rows[0],
-      top_earners: topEarners.rows,
+      top_earners: topEarnersWeekly.rows,
+      top_earners_monthly: topEarnersMonthly.rows,
       active_staff: parseInt(salesCount.rows[0].count)
     });
   } catch (error) {
@@ -690,7 +921,7 @@ app.get('/api/analytics/summary', requireAuth, async (req, res) => {
 app.get('/api/ledger', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT * FROM employee_ledger ORDER BY total_money_earnt DESC'
+      'SELECT * FROM employee_ledger WHERE total_money_earnt > 0 ORDER BY total_money_earnt DESC'
     );
     res.json({ ledger: result.rows });
   } catch (error) {
@@ -699,15 +930,106 @@ app.get('/api/ledger', requireAuth, async (req, res) => {
   }
 });
 
+// Create or update a weekly hourly payroll entry (Manager/Admin/Owner)
+app.post('/api/payroll/hourly', requireRole(PAYROLL_ROLES), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const employee_name = String(req.body?.employee_name || '').trim();
+    const week_start = String(req.body?.week_start || '').trim();
+    const payableHours = Number(req.body?.payable_hours);
+    const hourlyRate = Number(req.body?.hourly_rate);
+
+    if (!employee_name) {
+      return res.status(400).json({ error: 'Employee name is required' });
+    }
+
+    if (!week_start) {
+      return res.status(400).json({ error: 'Week start is required' });
+    }
+
+    if (!Number.isFinite(payableHours) || payableHours < 0) {
+      return res.status(400).json({ error: 'Payable hours must be 0 or greater' });
+    }
+
+    if (!Number.isFinite(hourlyRate) || hourlyRate < 0) {
+      return res.status(400).json({ error: 'Hourly rate must be 0 or greater' });
+    }
+
+    const hourlyAmount = toMoney(payableHours * hourlyRate);
+    if (hourlyAmount <= 0) {
+      return res.status(400).json({ error: 'Hourly pay must be greater than 0. Set payable hours and hourly rate.' });
+    }
+
+    await client.query('BEGIN');
+
+    const result = await client.query(
+      `INSERT INTO hourly_payroll_entries (employee_name, week_start, payable_hours, hourly_rate, hourly_amount, created_by, updated_by, updated_at)
+       VALUES ($1, $2::date, $3, $4, $5, $6, $6, CURRENT_TIMESTAMP)
+       ON CONFLICT (employee_name, week_start)
+       DO UPDATE SET
+         payable_hours = EXCLUDED.payable_hours,
+         hourly_rate = EXCLUDED.hourly_rate,
+         hourly_amount = EXCLUDED.hourly_amount,
+         updated_by = EXCLUDED.updated_by,
+         updated_at = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [employee_name, week_start, toMoney(payableHours), toMoney(hourlyRate), hourlyAmount, req.user.username]
+    );
+
+    await reconcileLedgerForEmployee(client, employee_name);
+    await client.query('COMMIT');
+
+    res.json({ message: 'Hourly payroll saved successfully', entry: result.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error saving hourly payroll entry:', error);
+    res.status(500).json({ error: 'Failed to save hourly payroll entry' });
+  } finally {
+    client.release();
+  }
+});
+
+// Remove a weekly hourly payroll entry (Manager/Admin/Owner)
+app.delete('/api/payroll/hourly/:id', requireRole(PAYROLL_ROLES), async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    await client.query('BEGIN');
+
+    const existing = await client.query(
+      'SELECT id, employee_name FROM hourly_payroll_entries WHERE id = $1',
+      [id]
+    );
+
+    if (!existing.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Hourly payroll entry not found' });
+    }
+
+    await client.query('DELETE FROM hourly_payroll_entries WHERE id = $1', [id]);
+    await reconcileLedgerForEmployee(client, existing.rows[0].employee_name);
+    await client.query('COMMIT');
+
+    res.json({ message: 'Hourly payroll entry removed successfully' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting hourly payroll entry:', error);
+    res.status(500).json({ error: 'Failed to delete hourly payroll entry' });
+  } finally {
+    client.release();
+  }
+});
+
 // Pay employee (Manager/Admin/Owner)
-app.post('/api/ledger/pay', requireRole(['Manager', 'Admin', 'Owner']), async (req, res) => {
+app.post('/api/ledger/pay', requireRole(PAYROLL_ROLES), async (req, res) => {
   const client = await pool.connect();
   try {
     const { employee_name, amount } = req.body;
     const paid_by = req.user.username;
     const paymentAmount = Number(amount);
+    const safeEmployeeName = String(employee_name || '').trim();
 
-    if (!String(employee_name || '').trim()) {
+    if (!safeEmployeeName) {
       return res.status(400).json({ error: 'Employee name is required' });
     }
 
@@ -717,13 +1039,29 @@ app.post('/api/ledger/pay', requireRole(['Manager', 'Admin', 'Owner']), async (r
 
     await client.query('BEGIN');
 
+    const ledgerResult = await client.query(
+      'SELECT total_money_earnt FROM employee_ledger WHERE employee_name = $1 FOR UPDATE',
+      [safeEmployeeName]
+    );
+
+    if (!ledgerResult.rows.length || Number(ledgerResult.rows[0].total_money_earnt || 0) <= 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This employee has no outstanding payroll balance to pay' });
+    }
+
+    const outstanding = Number(ledgerResult.rows[0].total_money_earnt || 0);
+    if (paymentAmount > outstanding) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Payment amount exceeds outstanding balance of ${toMoney(outstanding)}` });
+    }
+
     // Record payment
     await client.query(
       'INSERT INTO payment_history (employee_name, amount_paid, paid_by) VALUES ($1, $2, $3)',
-      [String(employee_name).trim(), paymentAmount, paid_by]
+      [safeEmployeeName, paymentAmount, paid_by]
     );
 
-    await reconcileLedgerForEmployee(client, String(employee_name).trim());
+    await reconcileLedgerForEmployee(client, safeEmployeeName);
     await client.query('COMMIT');
 
     res.json({ message: 'Payment recorded successfully' });
@@ -733,6 +1071,87 @@ app.post('/api/ledger/pay', requireRole(['Manager', 'Admin', 'Owner']), async (r
     res.status(500).json({ error: 'Failed to record payment' });
   } finally {
     client.release();
+  }
+});
+
+// Token accounts
+app.get('/api/token-accounts', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM token_accounts ORDER BY account_name ASC'
+    );
+    res.json({ token_accounts: result.rows });
+  } catch (error) {
+    console.error('Error fetching token accounts:', error);
+    res.status(500).json({ error: 'Failed to fetch token accounts' });
+  }
+});
+
+app.post('/api/token-accounts', requireRole(PAYROLL_ROLES), async (req, res) => {
+  try {
+    const account_name = String(req.body?.account_name || '').trim();
+    const token_balance = Number(req.body?.token_balance);
+
+    if (!account_name) {
+      return res.status(400).json({ error: 'Account name is required' });
+    }
+
+    if (!Number.isInteger(token_balance) || token_balance < 0) {
+      return res.status(400).json({ error: 'Token balance must be 0 or greater' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO token_accounts (account_name, token_balance, created_by, updated_by)
+       VALUES ($1, $2, $3, $3)
+       RETURNING *`,
+      [account_name, token_balance, req.user.username]
+    );
+
+    res.json({ message: 'Token account created successfully', token_account: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating token account:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A token account with that name already exists' });
+    }
+    res.status(500).json({ error: 'Failed to create token account' });
+  }
+});
+
+app.put('/api/token-accounts/:id', requireRole(PAYROLL_ROLES), async (req, res) => {
+  try {
+    const account_name = String(req.body?.account_name || '').trim();
+    const token_balance = Number(req.body?.token_balance);
+
+    if (!account_name) {
+      return res.status(400).json({ error: 'Account name is required' });
+    }
+
+    if (!Number.isInteger(token_balance) || token_balance < 0) {
+      return res.status(400).json({ error: 'Token balance must be 0 or greater' });
+    }
+
+    const result = await pool.query(
+      `UPDATE token_accounts
+       SET account_name = $1,
+           token_balance = $2,
+           updated_by = $3,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4
+       RETURNING *`,
+      [account_name, token_balance, req.user.username, req.params.id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Token account not found' });
+    }
+
+    res.json({ message: 'Token account updated successfully', token_account: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating token account:', error);
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'A token account with that name already exists' });
+    }
+    res.status(500).json({ error: 'Failed to update token account' });
   }
 });
 
@@ -871,14 +1290,15 @@ app.delete('/api/blacklist/:id', requireRole(['Manager', 'Admin', 'Owner']), asy
 app.get('/api/ledger/:employee_name', requireAuth, async (req, res) => {
   try {
     const { employee_name } = req.params;
-    const [ledger, sales, payments] = await Promise.all([
+    const [ledger, sales, payments, hourlyEntries] = await Promise.all([
       pool.query('SELECT * FROM employee_ledger WHERE employee_name ILIKE $1', [employee_name]),
-      pool.query('SELECT * FROM sales WHERE employee_name ILIKE $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 20', [employee_name]),
-      pool.query('SELECT * FROM payment_history WHERE employee_name ILIKE $1 ORDER BY paid_at DESC LIMIT 20', [employee_name])
+      pool.query('SELECT * FROM sales WHERE employee_name ILIKE $1 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 30', [employee_name]),
+      pool.query('SELECT * FROM payment_history WHERE employee_name ILIKE $1 ORDER BY paid_at DESC LIMIT 30', [employee_name]),
+      pool.query('SELECT * FROM hourly_payroll_entries WHERE employee_name ILIKE $1 ORDER BY week_start DESC LIMIT 52', [employee_name])
     ]);
 
     if (!ledger.rows.length) return res.status(404).json({ error: 'Employee not found in ledger' });
-    res.json({ ledger: ledger.rows[0], sales: sales.rows, payments: payments.rows });
+    res.json({ ledger: ledger.rows[0], sales: sales.rows, payments: payments.rows, hourly_entries: hourlyEntries.rows });
   } catch (error) {
     console.error('Error fetching employee ledger:', error);
     res.status(500).json({ error: 'Failed to fetch employee ledger' });
@@ -926,22 +1346,38 @@ app.get('/api/timesheets/weekly', requireAuth, async (req, res) => {
 
     // Default to current week if not specified
     const weekFilter = week_start
-      ? `DATE(week_start) = $1`
-      : `week_start >= date_trunc('week', CURRENT_DATE)`;
+      ? `week_start = $1::date`
+      : `week_start >= date_trunc('week', CURRENT_DATE)::date`;
     const params = week_start ? [week_start] : [];
 
     const [summary, weeks] = await Promise.all([
       pool.query(
         `SELECT
-          employee_name,
-          week_start,
-          COUNT(*) AS shifts,
-          SUM(duration_minutes) AS total_minutes,
-          ROUND(SUM(duration_minutes) / 60.0, 2) AS total_hours
-         FROM timesheets
-         WHERE clock_out IS NOT NULL AND ${weekFilter}
-         GROUP BY employee_name, week_start
-         ORDER BY week_start DESC, total_minutes DESC`,
+          summary.employee_name,
+          summary.week_start,
+          summary.shifts,
+          summary.total_minutes,
+          ROUND(summary.total_minutes / 60.0, 2) AS total_hours,
+          entry.id AS payroll_entry_id,
+          entry.payable_hours,
+          entry.hourly_rate,
+          entry.hourly_amount,
+          entry.updated_by AS payroll_updated_by,
+          entry.updated_at AS payroll_updated_at
+         FROM (
+           SELECT
+             employee_name,
+             week_start,
+             COUNT(*) AS shifts,
+             SUM(duration_minutes) AS total_minutes
+           FROM timesheets
+           WHERE clock_out IS NOT NULL AND ${weekFilter}
+           GROUP BY employee_name, week_start
+         ) AS summary
+         LEFT JOIN hourly_payroll_entries AS entry
+           ON entry.employee_name = summary.employee_name
+          AND entry.week_start = summary.week_start
+         ORDER BY summary.week_start DESC, summary.total_minutes DESC`,
         params
       ),
       // Get list of available weeks for the picker

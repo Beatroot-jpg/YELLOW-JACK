@@ -78,6 +78,14 @@ async function initializeDatabase() {
     await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP`);
     await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS deleted_by VARCHAR(255)`);
     await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS deleted_reason TEXT`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS original_amount DECIMAL(10, 2)`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS sale_type VARCHAR(32) DEFAULT 'STANDARD'`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS token_count INTEGER DEFAULT 0`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS token_account_id INTEGER`);
+    await client.query(`ALTER TABLE sales ADD COLUMN IF NOT EXISTS token_account_name VARCHAR(255)`);
+    await client.query(`UPDATE sales SET original_amount = total_amount WHERE original_amount IS NULL`);
+    await client.query(`UPDATE sales SET sale_type = 'STANDARD' WHERE sale_type IS NULL`);
+    await client.query(`UPDATE sales SET token_count = 0 WHERE token_count IS NULL`);
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS sale_revisions (
@@ -106,6 +114,8 @@ async function initializeDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    await client.query(`ALTER TABLE employee_ledger ADD COLUMN IF NOT EXISTS commission_owed DECIMAL(10, 2) DEFAULT 0`);
+    await client.query(`ALTER TABLE employee_ledger ADD COLUMN IF NOT EXISTS hourly_owed DECIMAL(10, 2) DEFAULT 0`);
 
     // 5. Payment history - when staff get paid
     await client.query(`
@@ -141,6 +151,34 @@ async function initializeDatabase() {
         week_start DATE,
         notes TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS hourly_payroll_entries (
+        id SERIAL PRIMARY KEY,
+        employee_name VARCHAR(255) NOT NULL,
+        week_start DATE NOT NULL,
+        payable_hours DECIMAL(10, 2) NOT NULL,
+        hourly_rate DECIMAL(10, 2) NOT NULL,
+        hourly_amount DECIMAL(10, 2) NOT NULL,
+        created_by VARCHAR(255),
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (employee_name, week_start)
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS token_accounts (
+        id SERIAL PRIMARY KEY,
+        account_name VARCHAR(255) UNIQUE NOT NULL,
+        token_balance INTEGER NOT NULL DEFAULT 0,
+        created_by VARCHAR(255),
+        updated_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 

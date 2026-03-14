@@ -543,14 +543,14 @@
     async function loadDashboardStats() {
       try {
         const [summaryRes, shiftsRes] = await Promise.all([
-          apiFetch(`${API_URL}/api/analytics/summary`),
+          apiFetch(`${API_URL}/${canAccessAnalytics(user) ? 'api/analytics/summary' : 'api/sales/summary'}`),
           apiFetch(`${API_URL}/api/timesheets/active`)
         ]);
         const summary = await summaryRes.json();
         const shifts = await shiftsRes.json();
         document.getElementById('dashTonight').textContent = fmtCurrency(summary.today?.total || 0);
-        document.getElementById('dashRevenue').textContent = fmtCurrency(summary.all_time?.business || 0);
-        document.getElementById('dashStaff').textContent = summary.active_staff || 0;
+        document.getElementById('dashRevenue').textContent = canAccessAnalytics(user) ? fmtCurrency(summary.all_time?.business || 0) : 'Restricted';
+        document.getElementById('dashStaff').textContent = canAccessAnalytics(user) ? (summary.active_staff || 0) : '—';
         document.getElementById('dashShifts').textContent = (shifts.active || []).length;
       } catch (e) {
         console.error('Failed to load dashboard stats:', e);

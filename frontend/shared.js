@@ -6,6 +6,7 @@
 const YJ_TOAST_QUEUE_KEY = 'yj_toast_queue';
 const YJ_REDIRECT_FLAG = '__yj_redirecting__';
 const YJ_ADMIN_ROLES = ['Admin', 'Owner'];
+const YJ_ANALYTICS_ROLES = ['Manager', 'Admin', 'Owner'];
 const YJ_SYNC_CHANNEL = typeof BroadcastChannel !== 'undefined'
   ? new BroadcastChannel('yellow-jack-sync')
   : null;
@@ -124,12 +125,23 @@ function canAccessAdmin(user = null) {
   return isAdminRole(resolvedUser?.role);
 }
 
-function applyRoleVisibility() {
-  if (canAccessAdmin()) return;
+function canAccessAnalytics(user = null) {
+  const resolvedUser = user || JSON.parse(localStorage.getItem('yj_user') || 'null');
+  return YJ_ANALYTICS_ROLES.includes(resolvedUser?.role);
+}
 
-  document.querySelectorAll('a[href="admin.html"]').forEach(el => {
-    el.style.display = 'none';
-  });
+function applyRoleVisibility() {
+  if (!canAccessAdmin()) {
+    document.querySelectorAll('a[href="admin.html"]').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
+
+  if (!canAccessAnalytics()) {
+    document.querySelectorAll('a[href="analytics.html"]').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
 }
 
 function showInlineMessage(target, text, ok = true, duration = 4000) {
